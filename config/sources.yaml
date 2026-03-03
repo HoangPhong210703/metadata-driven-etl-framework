@@ -3,27 +3,5 @@ sources:
     data_subject: crm
     schema: public
     tables:
-      - name: customers
+      - name: project_task
         load_strategy: full
-      - name: orders
-        load_strategy: incremental
-        cursor_column: updated_at
-        initial_value: "2024-01-01"
-
-  - name: postgres_timesheet
-    data_subject: hr
-    schema: public
-    tables:
-      - name: timesheets
-        load_strategy: incremental
-        cursor_column: updated_at
-        initial_value: "2024-01-01"
-
-  - name: mariadb_erp
-    data_subject: erp
-    schema: erp_db
-    tables:
-      - name: invoices
-        load_strategy: incremental
-        cursor_column: modified_at
-        initial_value: "2024-01-01"
