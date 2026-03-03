@@ -1,11 +1,10 @@
-import datetime
 from pathlib import Path
 
 import dlt
 from dlt.destinations import filesystem
 from dlt.sources.sql_database import sql_database
 
-from src.ingestion.config import SourceConfig, TableConfig, load_sources_config
+from src.ingestion.config import SourceConfig, load_sources_config
 
 
 def build_layout() -> str:
