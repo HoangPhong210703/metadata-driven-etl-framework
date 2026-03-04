@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:dlthub.com)",
+      "Read(//c/Users/Admin/.claude/plugins/cache/claude-plugins-official/superpowers/4.3.1/skills/subagent-driven-development/**)",
+      "Bash(docker --version)",
+      "Bash(docker compose version)",
+      "Bash(docker compose build --no-cache)",
+      "Bash(docker compose exec airflow-scheduler airflow tasks list bronze_ingestion)",
+      "Bash(docker compose exec airflow-scheduler airflow dags unpause bronze_ingestion)",
+      "Bash(docker compose exec airflow-scheduler airflow dags trigger bronze_ingestion)",
+      "Bash(docker compose exec airflow-scheduler airflow dags list-runs -d bronze_ingestion)",
+      "Bash(docker compose down)",
+      "Bash(docker compose up -d)"
+    ],
+    "additionalDirectories": [
+      "c:\\Users\\Admin\\Code\\Github\\etl-pipeline-file-partition-demo\\docs"
+    ]
+  }
+}

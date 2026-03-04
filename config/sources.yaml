@@ -5,3 +5,12 @@ sources:
     tables:
       - name: project_task
         load_strategy: full
+
+  - name: postgres_timesheet
+    data_subject: hr
+    schema: public
+    tables:
+      - name: account_account
+        load_strategy: incremental
+        cursor_column: write_date
+        initial_value: "2024-01-01"
