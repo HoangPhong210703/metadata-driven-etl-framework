@@ -1,3 +1,4 @@
+import datetime
 from pathlib import Path
 
 import dlt
@@ -36,11 +37,25 @@ def _is_first_run(pipeline: dlt.Pipeline) -> bool:
         return True
 
 
+def cleanup_todays_parquet(bucket_url: str, source_config: SourceConfig) -> None:
+    """Delete today's parquet files so only the latest load per day is kept."""
+    today = datetime.date.today().strftime("%d-%m-%Y")
+    base = Path(build_bucket_url(bucket_url, source_config))
+
+    for table_config in source_config.tables:
+        parquet_file = base / source_config.schema / table_config.name / f"{today}.parquet"
+        if parquet_file.exists():
+            parquet_file.unlink()
+            print(f"[{source_config.name}] Removed existing {parquet_file}")
+
+
 def run_source_ingestion(
     source_config: SourceConfig,
     bucket_url: str,
     credentials: str,
 ) -> None:
+    cleanup_todays_parquet(bucket_url, source_config)
+
     pipeline = build_pipeline(source_config, bucket_url)
     first_run = _is_first_run(pipeline)
 
@@ -62,10 +77,13 @@ def run_source_ingestion(
         for table_config in source_config.tables:
             if table_config.load_strategy == "incremental" and table_config.cursor_column:
                 resource = source.resources[table_config.name]
+                initial_value = table_config.initial_value
+                if initial_value:
+                    initial_value = datetime.datetime.fromisoformat(initial_value)
                 resource.apply_hints(
                     incremental=dlt.sources.incremental(
                         table_config.cursor_column,
-                        initial_value=table_config.initial_value,
+                        initial_value=initial_value,
                     ),
                 )
 

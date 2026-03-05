@@ -6,6 +6,7 @@ x-airflow-common: &airflow-common
   environment:
     AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-db:5432/airflow
     AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__CORE__PARALLELISM: 1
     AIRFLOW__CORE__FERNET_KEY: ''
     AIRFLOW__WEBSERVER__SECRET_KEY: change-me-in-production
   volumes:

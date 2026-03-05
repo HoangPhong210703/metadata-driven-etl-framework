@@ -14,3 +14,4 @@ sources:
         load_strategy: incremental
         cursor_column: write_date
         initial_value: "2024-01-01"
+      
