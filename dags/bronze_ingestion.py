@@ -6,6 +6,7 @@ from pathlib import Path
 
 from airflow import DAG
 from airflow.operators.python import PythonOperator
+from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 
 # Add project root to path so we can import src modules
 sys.path.insert(0, "/opt/airflow")
@@ -48,13 +49,23 @@ with DAG(
     schedule="@daily",
     start_date=datetime(2024, 1, 1),
     catchup=False,
+    max_active_tasks=1,
     tags=["bronze", "ingestion"],
 ) as dag:
     sources = load_sources_config(CONFIG_PATH) if CONFIG_PATH.exists() else []
 
+    ingest_tasks = []
     for source in sources:
-        PythonOperator(
+        task = PythonOperator(
             task_id=f"ingest_{source.name}",
             python_callable=ingest_source,
             op_kwargs={"source_name": source.name},
         )
+        ingest_tasks.append(task)
+
+    trigger_stg = TriggerDagRunOperator(
+        task_id="trigger_stg_ingestion",
+        trigger_dag_id="stg_ingestion",
+    )
+
+    ingest_tasks >> trigger_stg

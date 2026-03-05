@@ -1,17 +1,32 @@
 sources:
   - name: postgres_crm
-    data_subject: crm
     schema: public
     tables:
       - name: project_task
         load_strategy: full
+        data_subject: crm
+        primary_key: id
 
   - name: postgres_timesheet
-    data_subject: hr
     schema: public
     tables:
       - name: account_account
         load_strategy: incremental
+        data_subject: hr
         cursor_column: write_date
         initial_value: "2024-01-01"
-      
+        primary_key: id
+
+      - name: attendance_application
+        load_strategy: incremental
+        data_subject: attendance
+        cursor_column: write_date
+        initial_value: "2024-01-01"
+        primary_key: id
+
+      - name: attendance_summary_log
+        load_strategy: incremental
+        data_subject: attendance
+        cursor_column: write_date
+        initial_value: "2024-01-01"
+        primary_key: id

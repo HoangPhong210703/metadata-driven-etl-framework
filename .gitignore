@@ -9,3 +9,6 @@ data/
 .pytest_cache/
 logs/
 .env
+dbt/target/
+dbt/dbt_packages/
+dbt/logs/

@@ -15,6 +15,7 @@ x-airflow-common: &airflow-common
     - ./config:/opt/airflow/config
     - ./.dlt:/opt/airflow/.dlt
     - ./data:/opt/airflow/data
+    - ./dbt:/opt/airflow/dbt
     - ./logs:/opt/airflow/logs
   depends_on:
     airflow-db:

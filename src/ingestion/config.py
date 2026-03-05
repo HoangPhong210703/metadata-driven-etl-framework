@@ -9,20 +9,21 @@ import yaml
 class TableConfig:
     name: str
     load_strategy: str  # "full" or "incremental"
+    data_subject: str = ""
     cursor_column: Optional[str] = None
     initial_value: Optional[str] = None
+    primary_key: Optional[list[str]] = None
 
 
 @dataclass
 class SourceConfig:
     name: str
-    data_subject: str
     schema: str
     tables: list[TableConfig]
 
 
-_REQUIRED_SOURCE_FIELDS = ("name", "data_subject", "schema", "tables")
-_REQUIRED_TABLE_FIELDS = ("name", "load_strategy")
+_REQUIRED_SOURCE_FIELDS = ("name", "schema", "tables")
+_REQUIRED_TABLE_FIELDS = ("name", "load_strategy", "data_subject")
 _VALID_LOAD_STRATEGIES = ("full", "incremental")
 
 
@@ -59,19 +60,29 @@ def load_sources_config(config_path: Path) -> list[SourceConfig]:
                     f"Table '{raw_table['name']}' has load_strategy 'incremental' "
                     f"but no cursor_column specified"
                 )
+
+            raw_pk = raw_table.get("primary_key")
+            if isinstance(raw_pk, str):
+                primary_key = [raw_pk]
+            elif isinstance(raw_pk, list):
+                primary_key = raw_pk
+            else:
+                primary_key = None
+
             tables.append(
                 TableConfig(
                     name=raw_table["name"],
                     load_strategy=strategy,
+                    data_subject=raw_table["data_subject"],
                     cursor_column=raw_table.get("cursor_column"),
                     initial_value=raw_table.get("initial_value"),
+                    primary_key=primary_key,
                 )
             )
 
         sources.append(
             SourceConfig(
                 name=raw_source["name"],
-                data_subject=raw_source["data_subject"],
                 schema=raw_source["schema"],
                 tables=tables,
             )

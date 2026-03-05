@@ -1,0 +1,8 @@
+version: 2
+
+sources:
+  - name: stg_temp
+    schema: stg_temp
+    tables:
+      - name: project_task
+      - name: account_account
