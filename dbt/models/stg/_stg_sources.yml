@@ -6,3 +6,5 @@ sources:
     tables:
       - name: project_task
       - name: account_account
+      - name: res_partner
+      - name: crm_lead

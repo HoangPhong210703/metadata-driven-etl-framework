@@ -47,12 +47,28 @@ def build_stg_pipeline(
     )
 
 
+def _print_stg_summary(source_name: str, results: list[tuple]) -> None:
+    print(f"\n{'=' * 55}")
+    print(f"  Stg Ingestion Summary — {source_name}")
+    print(f"{'=' * 55}")
+    for table_name, status, files_count, message in results:
+        icon = "OK" if status == "loaded" else ("FAIL" if status == "failed" else "SKIP")
+        line = f"  [{icon}] {table_name:<30} "
+        if status == "loaded":
+            line += f"{files_count} file(s)"
+        elif message:
+            line += message
+        print(line)
+    print(f"{'=' * 55}\n")
+
+
 def run_stg_ingestion(
     source_config: SourceConfig,
     bronze_base_url: str,
     warehouse_credentials: str,
     retention_days: int = 7,
 ) -> None:
+    results: list[tuple] = []
     pipeline = build_stg_pipeline(source_config, warehouse_credentials)
 
     for table_config in source_config.tables:
@@ -68,19 +84,27 @@ def run_stg_ingestion(
 
         if not recent_files:
             print(f"[stg_{source_config.name}] No recent parquet files for {table_config.name}, skipping")
+            results.append((table_config.name, "skipped", 0, "no recent parquet files"))
             continue
 
-        for i, parquet_file in enumerate(recent_files):
-            disposition = "replace" if i == 0 else "append"
-            reader = readers(
-                bucket_url=str(parquet_file.parent),
-                file_glob=parquet_file.name,
-            ).read_parquet()
-            load_info = pipeline.run(
-                reader.with_name(table_config.name),
-                write_disposition=disposition,
-            )
-            print(f"[stg_{source_config.name}] Loaded {parquet_file.name} → {table_config.name} ({disposition}): {load_info}")
+        try:
+            for i, parquet_file in enumerate(recent_files):
+                disposition = "replace" if i == 0 else "append"
+                reader = readers(
+                    bucket_url=str(parquet_file.parent),
+                    file_glob=parquet_file.name,
+                ).read_parquet()
+                load_info = pipeline.run(
+                    reader.with_name(table_config.name),
+                    write_disposition=disposition,
+                )
+                print(f"[stg_{source_config.name}] Loaded {parquet_file.name} → {table_config.name} ({disposition}): {load_info}")
+            results.append((table_config.name, "loaded", len(recent_files), ""))
+        except Exception as e:
+            print(f"[stg_{source_config.name}] FAILED loading {table_config.name}: {e}")
+            results.append((table_config.name, "failed", 0, str(e)))
+
+    _print_stg_summary(source_config.name, results)
 
 
 def run_all_stg_sources(

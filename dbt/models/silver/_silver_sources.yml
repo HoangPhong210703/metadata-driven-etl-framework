@@ -1,0 +1,8 @@
+version: 2
+
+sources:
+  - name: stg
+    schema: stg
+    tables:
+      - name: stg_res_partner
+      - name: stg_crm_lead

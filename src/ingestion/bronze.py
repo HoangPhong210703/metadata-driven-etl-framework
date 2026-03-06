@@ -64,11 +64,26 @@ def _group_tables_by_data_subject(source_config: SourceConfig) -> dict[str, list
     return dict(groups)
 
 
+def _print_bronze_summary(source_name: str, results: list[tuple]) -> None:
+    print(f"\n{'=' * 55}")
+    print(f"  Bronze Ingestion Summary — {source_name}")
+    print(f"{'=' * 55}")
+    for table_name, data_subject, status, message in results:
+        icon = "OK" if status == "loaded" else ("FAIL" if status == "failed" else "SKIP")
+        line = f"  [{icon}] {table_name:<30} ({data_subject})"
+        if message:
+            line += f"  {message}"
+        print(line)
+    print(f"{'=' * 55}\n")
+
+
 def run_source_ingestion(
     source_config: SourceConfig,
     bucket_url: str,
     credentials: str,
 ) -> None:
+    results: list[tuple] = []
+
     rotate_todays_parquet(bucket_url, source_config)
 
     groups = _group_tables_by_data_subject(source_config)
@@ -104,8 +119,17 @@ def run_source_ingestion(
                         ),
                     )
 
-        load_info = pipeline.run(source, write_disposition="append", loader_file_format="parquet")
-        print(f"[{source_config.name}/{data_subject}] Load complete: {load_info}")
+        try:
+            load_info = pipeline.run(source, write_disposition="append", loader_file_format="parquet")
+            print(f"[{source_config.name}/{data_subject}] Load complete: {load_info}")
+            for table_config in table_configs:
+                results.append((table_config.name, data_subject, "loaded", ""))
+        except Exception as e:
+            print(f"[{source_config.name}/{data_subject}] Load FAILED: {e}")
+            for table_config in table_configs:
+                results.append((table_config.name, data_subject, "failed", str(e)))
+
+    _print_bronze_summary(source_config.name, results)
 
 
 def run_all_sources(config_path: Path, bucket_url: str, secrets: dict[str, str]) -> None:

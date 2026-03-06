@@ -4,6 +4,18 @@ version: "1.0.0"
 profile: warehouse
 
 model-paths: ["models"]
+snapshot-paths: ["snapshots"]
 test-paths: ["tests"]
 target-path: "target"
 clean-targets: ["target", "dbt_packages"]
+
+models:
+  etl_warehouse:
+    stg:
+      +schema: stg
+    silver:
+      +schema: silver
+
+snapshots:
+  etl_warehouse:
+    +target_schema: silver

@@ -7,6 +7,20 @@ sources:
         data_subject: crm
         primary_key: id
 
+      - name: crm_lead
+        load_strategy: incremental
+        data_subject: customer
+        cursor_column: write_date
+        initial_value: "2024-01-01"
+        primary_key: id
+
+      - name: res_partner
+        load_strategy: incremental
+        data_subject: customer
+        cursor_column: write_date
+        initial_value: "2024-01-01"
+        primary_key: id
+
   - name: postgres_timesheet
     schema: public
     tables:

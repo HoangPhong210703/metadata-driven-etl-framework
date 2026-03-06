@@ -8,6 +8,7 @@ from pathlib import Path
 
 from airflow import DAG
 from airflow.operators.python import PythonOperator
+from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 
 sys.path.insert(0, "/opt/airflow")
 
@@ -89,3 +90,10 @@ with DAG(
 
     for load_task in load_tasks:
         load_task >> dbt_task
+
+    trigger_silver = TriggerDagRunOperator(
+        task_id="trigger_silver_transform",
+        trigger_dag_id="silver_transform",
+    )
+
+    dbt_task >> trigger_silver
