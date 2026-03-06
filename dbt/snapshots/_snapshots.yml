@@ -1,0 +1,36 @@
+version: 2
+
+snapshots:
+  - name: dim_customer
+    description: "SCD-2 customer dimension tracking historical changes to res_partner. Each row is a version of the customer — use dbt_valid_to is null for current state."
+    columns:
+      - name: dbt_scd_id
+        description: "Surrogate key — unique per customer version (used as customer_key in fact tables)"
+        tests:
+          - unique
+          - not_null
+      - name: id
+        description: "Natural key from res_partner"
+        tests:
+          - not_null
+      - name: name
+        description: "Customer/partner name"
+        tests:
+          - not_null:
+              severity: warn
+      - name: phone
+        description: "Contact phone number"
+      - name: email
+        description: "Contact email address"
+      - name: is_company
+        description: "True if partner is a company, false if individual"
+      - name: write_date
+        description: "Last modified timestamp in source (used as SCD-2 updated_at)"
+      - name: dbt_valid_from
+        description: "When this version became active"
+        tests:
+          - not_null
+      - name: dbt_valid_to
+        description: "When this version was superseded (null = current)"
+      - name: dbt_updated_at
+        description: "Source write_date at time of snapshot"

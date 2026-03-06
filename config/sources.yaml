@@ -21,6 +21,16 @@ sources:
         initial_value: "2024-01-01"
         primary_key: id
 
+  - name: mariadb_erp
+    schema: appdb
+    tables:
+      - name: tabCustomer
+        load_strategy: incremental
+        data_subject: customer
+        cursor_column: modified
+        initial_value: "2024-01-01"
+        primary_key: name
+
   - name: postgres_timesheet
     schema: public
     tables:
