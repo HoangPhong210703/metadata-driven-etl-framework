@@ -1,4 +1,4 @@
-"""Silver transform DAG — runs dbt snapshots then silver models."""
+"""Silver transform DAG — snapshot, dim, fact as separate tasks with dbt test."""
 
 import os
 import subprocess
@@ -49,17 +49,25 @@ def _run_dbt(command: list[str]) -> None:
         raise RuntimeError(f"dbt command failed: {' '.join(command)}")
 
 
-def run_dbt_snapshots(**kwargs):
-    _run_dbt(["snapshot", "--select", "dim_customer"])
+def run_snapshot_dim_customer(**kwargs):
+    _run_dbt(["snapshot", "--select", "silver_customer_dim_customer"])
 
 
-def run_dbt_silver(**kwargs):
-    _run_dbt(["run", "--select", "silver"])
+def run_dim_date(**kwargs):
+    _run_dbt(["run", "--select", "silver_dim_date"])
+
+
+def run_fact_lead(**kwargs):
+    _run_dbt(["run", "--select", "silver_crm_fact_lead"])
+
+
+def run_dbt_test_silver(**kwargs):
+    _run_dbt(["test", "--select", "silver"])
 
 
 with DAG(
     dag_id="silver_transform",
-    description="Run dbt snapshots and silver models",
+    description="Run dbt snapshot, dim, fact models and tests",
     schedule=None,
     start_date=datetime(2024, 1, 1),
     catchup=False,
@@ -67,13 +75,25 @@ with DAG(
     tags=["silver", "dbt"],
 ) as dag:
     snapshot_task = PythonOperator(
-        task_id="dbt_snapshot_dim_customer",
-        python_callable=run_dbt_snapshots,
+        task_id="snapshot_silver_customer_dim_customer",
+        python_callable=run_snapshot_dim_customer,
     )
 
-    silver_task = PythonOperator(
-        task_id="dbt_run_silver",
-        python_callable=run_dbt_silver,
+    dim_date_task = PythonOperator(
+        task_id="run_silver_dim_date",
+        python_callable=run_dim_date,
     )
 
-    snapshot_task >> silver_task
+    fact_lead_task = PythonOperator(
+        task_id="run_silver_crm_fact_lead",
+        python_callable=run_fact_lead,
+    )
+
+    test_task = PythonOperator(
+        task_id="dbt_test_silver",
+        python_callable=run_dbt_test_silver,
+    )
+
+    # dim_date has no upstream dependency, runs in parallel with snapshot
+    # fact_lead depends on both dim_customer (snapshot) and dim_date
+    [snapshot_task, dim_date_task] >> fact_lead_task >> test_task

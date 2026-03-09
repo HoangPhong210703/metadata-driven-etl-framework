@@ -1,4 +1,4 @@
-{% snapshot dim_customer %}
+{% snapshot silver_customer_dim_customer %}
 
 {{
     config(
@@ -16,6 +16,6 @@ select
     email,
     is_company,
     write_date
-from {{ source('stg', 'stg_res_partner') }}
+from {{ source('stg', 'stg_customer_postgres_crm_res_partner') }}
 
 {% endsnapshot %}

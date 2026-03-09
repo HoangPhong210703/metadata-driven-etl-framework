@@ -84,8 +84,6 @@ def run_source_ingestion(
 ) -> None:
     results: list[tuple] = []
 
-    rotate_todays_parquet(bucket_url, source_config)
-
     groups = _group_tables_by_data_subject(source_config)
 
     for data_subject, table_configs in groups.items():

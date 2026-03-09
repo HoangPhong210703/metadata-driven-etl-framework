@@ -2,7 +2,7 @@
 
 select distinct on (id)
     *
-from {{ source('stg_temp', 'crm_lead') }}
+from {{ source('stg_temp', 'temp_customer_postgres_crm_crm_lead') }}
 
 {% if is_incremental() %}
 where _dlt_load_id > (select max(_dlt_load_id) from {{ this }})

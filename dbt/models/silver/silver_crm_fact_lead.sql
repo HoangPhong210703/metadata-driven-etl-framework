@@ -11,20 +11,20 @@ with leads as (
         create_date,
         expected_revenue,
         prorated_revenue
-    from {{ source('stg', 'stg_crm_lead') }}
+    from {{ source('stg', 'stg_customer_postgres_crm_crm_lead') }}
 ),
 
 customers as (
     select
         dbt_scd_id  as customer_key,
         id          as partner_id
-    from {{ ref('dim_customer') }}
+    from {{ ref('silver_customer_dim_customer') }}
     where dbt_valid_to is null
 ),
 
 dates as (
     select date_key, date
-    from {{ ref('dim_date') }}
+    from {{ ref('silver_dim_date') }}
 )
 
 select

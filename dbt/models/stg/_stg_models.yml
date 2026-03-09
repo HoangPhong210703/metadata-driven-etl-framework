@@ -1,7 +1,7 @@
 version: 2
 
 models:
-  - name: stg_project_task
+  - name: stg_crm_postgres_crm_project_task
     description: "Deduplicated project tasks from Odoo. Full refresh — latest version per ID."
     columns:
       - name: id
@@ -18,7 +18,7 @@ models:
       - name: write_date
         description: "Last modified timestamp in source"
 
-  - name: stg_res_partner
+  - name: stg_customer_postgres_crm_res_partner
     description: "Deduplicated partners/customers from Odoo. Full refresh — latest version per ID."
     columns:
       - name: id
@@ -30,7 +30,8 @@ models:
         description: "Partner or company name"
         tests:
           - not_null:
-              severity: warn
+              arguments:
+                severity: warn
       - name: email
         description: "Contact email address"
       - name: phone
@@ -40,7 +41,7 @@ models:
       - name: write_date
         description: "Last modified timestamp in source"
 
-  - name: stg_crm_lead
+  - name: stg_customer_postgres_crm_crm_lead
     description: "Deduplicated CRM leads from Odoo. Incremental — only new records per load."
     columns:
       - name: id
@@ -59,7 +60,7 @@ models:
       - name: write_date
         description: "Last modified timestamp in source"
 
-  - name: stg_account_account
+  - name: stg_hr_postgres_timesheet_account_account
     description: "Deduplicated chart of accounts from Odoo. Incremental — only new records per load."
     columns:
       - name: id

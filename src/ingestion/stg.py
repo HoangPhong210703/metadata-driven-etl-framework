@@ -94,8 +94,9 @@ def run_stg_ingestion(
                     bucket_url=str(parquet_file.parent),
                     file_glob=parquet_file.name,
                 ).read_parquet()
+                stg_temp_name = f"temp_{table_config.data_subject}_{source_config.name}_{table_config.name}"
                 load_info = pipeline.run(
-                    reader.with_name(table_config.name),
+                    reader.with_name(stg_temp_name),
                     write_disposition=disposition,
                 )
                 print(f"[stg_{source_config.name}] Loaded {parquet_file.name} → {table_config.name} ({disposition}): {load_info}")

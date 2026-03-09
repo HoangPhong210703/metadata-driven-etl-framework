@@ -4,7 +4,10 @@ sources:
   - name: stg_temp
     schema: stg_temp
     tables:
-      - name: project_task
-      - name: account_account
-      - name: res_partner
-      - name: crm_lead
+      - name: temp_crm_postgres_crm_project_task
+      - name: temp_customer_postgres_crm_res_partner
+      - name: temp_customer_postgres_crm_crm_lead
+      - name: temp_hr_postgres_timesheet_account_account
+      - name: temp_attendance_postgres_timesheet_attendance_application
+      - name: temp_attendance_postgres_timesheet_attendance_summary_log
+      - name: temp_customer_mariadb_erp_tabCustomer
