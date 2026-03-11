@@ -1,17 +1,16 @@
 """Bronze ingestion DAG for postgres_timesheet source."""
 
 import sys
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 from airflow import DAG
 from airflow.operators.python import PythonOperator
-from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 
 sys.path.insert(0, "/opt/airflow")
 
 from src.ingestion.config import load_sources_config
-from src.ingestion.bronze import rotate_todays_parquet, run_source_ingestion
+from src.ingestion.bronze import rotate_todays_parquet, run_data_subject_ingestion, test_source_connection
 
 CONFIG_PATH = Path("/opt/airflow/config/sources.yaml")
 SECRETS_PATH = Path("/opt/airflow/.dlt/secrets.toml")
@@ -33,11 +32,18 @@ def rotate(**kwargs):
     rotate_todays_parquet(BUCKET_URL, source_config)
 
 
-def ingest(**kwargs):
+def source_connection(**kwargs):
     sources = load_sources_config(CONFIG_PATH)
     source_config = next(s for s in sources if s.name == SOURCE_NAME)
     credentials = _load_credentials()
-    run_source_ingestion(source_config, BUCKET_URL, credentials)
+    test_source_connection(credentials, source_config.schema)
+
+
+def fetch_data_subject(data_subject: str, **kwargs):
+    sources = load_sources_config(CONFIG_PATH)
+    source_config = next(s for s in sources if s.name == SOURCE_NAME)
+    credentials = _load_credentials()
+    run_data_subject_ingestion(source_config, BUCKET_URL, credentials, data_subject)
 
 
 with DAG(
@@ -47,15 +53,27 @@ with DAG(
     start_date=datetime(2024, 1, 1),
     catchup=False,
     max_active_tasks=1,
+    default_args={
+        "retries": 2,
+        "retry_delay": timedelta(seconds=30),
+    },
     tags=["bronze", "postgres_timesheet"],
 ) as dag:
     load_credentials = PythonOperator(task_id="load_credentials", python_callable=_load_credentials)
     #rotate_task = PythonOperator(task_id="rotate_parquet", python_callable=rotate)
-    ingest_task = PythonOperator(task_id="ingest", python_callable=ingest)
-    trigger_stg = TriggerDagRunOperator(
-        task_id="trigger_stg",
-        trigger_dag_id="stg_ingestion",
-        conf={"source_name": SOURCE_NAME},
-    )
+    source_connection_task = PythonOperator(task_id="source_connection", python_callable=source_connection)
 
-    load_credentials >> ingest_task >> trigger_stg
+    sources = load_sources_config(CONFIG_PATH) if CONFIG_PATH.exists() else []
+    source_config = next((s for s in sources if s.name == SOURCE_NAME), None)
+
+    if source_config:
+        data_subjects = {t.data_subject for t in source_config.tables}
+        for ds in sorted(data_subjects):
+            task = PythonOperator(
+                task_id=f"fetch__{ds}",
+                python_callable=fetch_data_subject,
+                op_kwargs={"data_subject": ds},
+            )
+            source_connection_task >> task
+
+    load_credentials >> source_connection_task

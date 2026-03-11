@@ -1,7 +1,7 @@
 version: 2
 
 snapshots:
-  - name: silver_customer_dim_customer
+  - name: silver__customer__dim_customer
     description: "SCD-2 customer dimension tracking historical changes to res_partner. Each row is a version of the customer — use dbt_valid_to is null for current state."
     columns:
       - name: dbt_scd_id

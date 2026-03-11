@@ -1,8 +1,0 @@
-version: 2
-
-sources:
-  - name: stg
-    schema: stg
-    tables:
-      - name: stg_customer_postgres_crm_res_partner
-      - name: stg_customer_postgres_crm_crm_lead

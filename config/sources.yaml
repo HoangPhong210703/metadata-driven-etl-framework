@@ -24,9 +24,121 @@ sources:
   - name: mariadb_erp
     schema: appdb
     tables:
+      - name: tabCompany
+        load_strategy: incremental
+        data_subject: company
+        cursor_column: modified
+        initial_value: "2024-01-01"
+        primary_key: name
+
+      - name: tabCurrency Exchange
+        load_strategy: incremental
+        data_subject: company
+        cursor_column: modified
+        initial_value: "2024-01-01"
+        primary_key: name
+
+      - name: tabUnit
+        load_strategy: incremental
+        data_subject: company
+        cursor_column: modified
+        initial_value: "2024-01-01"
+        primary_key: name
+
       - name: tabCustomer
         load_strategy: incremental
         data_subject: customer
+        cursor_column: modified
+        initial_value: "2024-01-01"
+        primary_key: name
+
+      - name: tabDelivery KPI
+        load_strategy: incremental
+        data_subject: delivery
+        cursor_column: modified
+        initial_value: "2024-01-01"
+        primary_key: name
+
+      - name: tabDelivery Monthly KPI
+        load_strategy: incremental
+        data_subject: delivery
+        cursor_column: modified
+        initial_value: "2024-01-01"
+        primary_key: name
+
+      - name: tabDelivery Resource Item
+        load_strategy: incremental
+        data_subject: delivery
+        cursor_column: modified
+        initial_value: "2024-01-01"
+        primary_key: name
+
+      - name: tabDepartment
+        load_strategy: incremental
+        data_subject: hr
+        cursor_column: modified
+        initial_value: "2024-01-01"
+        primary_key: name
+
+      - name: tabEmployee
+        load_strategy: incremental
+        data_subject: hr
+        cursor_column: modified
+        initial_value: "2024-01-01"
+        primary_key: name
+
+      - name: tabEmployment Contract
+        load_strategy: incremental
+        data_subject: hr
+        cursor_column: modified
+        initial_value: "2024-01-01"
+        primary_key: name
+
+      - name: tabEmployment Type
+        load_strategy: incremental
+        data_subject: hr
+        cursor_column: modified
+        initial_value: "2024-01-01"
+        primary_key: name
+
+      - name: tabHeadcount Cost
+        load_strategy: incremental
+        data_subject: hr
+        cursor_column: modified
+        initial_value: "2024-01-01"
+        primary_key: name
+
+      - name: tabHoliday
+        load_strategy: incremental
+        data_subject: hr
+        cursor_column: modified
+        initial_value: "2024-01-01"
+        primary_key: name
+
+      - name: tabProject
+        load_strategy: incremental
+        data_subject: project
+        cursor_column: modified
+        initial_value: "2024-01-01"
+        primary_key: name
+
+      - name: tabProject Model
+        load_strategy: incremental
+        data_subject: project
+        cursor_column: modified
+        initial_value: "2024-01-01"
+        primary_key: name
+
+      - name: tabProject Package
+        load_strategy: incremental
+        data_subject: project
+        cursor_column: modified
+        initial_value: "2024-01-01"
+        primary_key: name
+
+      - name: tabProject User
+        load_strategy: incremental
+        data_subject: project
         cursor_column: modified
         initial_value: "2024-01-01"
         primary_key: name

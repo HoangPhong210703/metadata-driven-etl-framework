@@ -7,12 +7,13 @@ If no conf is provided, processes all sources.
 import os
 import subprocess
 import sys
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 from airflow.operators.trigger_dagrun import TriggerDagRunOperator
+from airflow.sensors.external_task import ExternalTaskSensor
 
 sys.path.insert(0, "/opt/airflow")
 
@@ -55,6 +56,27 @@ def _get_source_name(kwargs) -> str | None:
     return None
 
 
+def _run_stg_load(pipeline, reader, stg_table_name, source_config, credentials):
+    """Run a stg load, resetting pipeline state on schema mismatch."""
+    from dlt.destinations.exceptions import DatabaseUndefinedRelation
+
+    try:
+        return pipeline.run(
+            reader.with_name(stg_table_name),
+            write_disposition="replace",
+        )
+    except Exception as e:
+        if "UndefinedRelation" in type(e).__name__ or "does not exist" in str(e):
+            print(f"[stg] Schema mismatch for {stg_table_name} — resetting pipeline state and retrying")
+            pipeline.drop()
+            pipeline = build_stg_pipeline(source_config, credentials)
+            return pipeline.run(
+                reader.with_name(stg_table_name),
+                write_disposition="replace",
+            )
+        raise
+
+
 def load_subject_tables(source_name: str, data_subject: str, **kwargs):
     from dlt.sources.filesystem import readers
 
@@ -64,6 +86,10 @@ def load_subject_tables(source_name: str, data_subject: str, **kwargs):
     tables = [t for t in source_config.tables if t.data_subject == data_subject]
 
     pipeline = build_stg_pipeline(source_config, credentials)
+
+    if pipeline.has_pending_data:
+        print(f"[stg] Dropping pending packages for {pipeline.pipeline_name}")
+        pipeline.drop_pending_packages()
 
     for table_config in tables:
         parquet_dir = get_parquet_dir(
@@ -85,10 +111,7 @@ def load_subject_tables(source_name: str, data_subject: str, **kwargs):
             bucket_url=str(latest_file.parent),
             file_glob=latest_file.name,
         ).read_parquet()
-        load_info = pipeline.run(
-            reader.with_name(stg_table_name),
-            write_disposition="replace",
-        )
+        load_info = _run_stg_load(pipeline, reader, stg_table_name, source_config, credentials)
         print(f"[stg] Loaded {latest_file.name} → {stg_table_name}: {load_info}")
 
 
@@ -125,15 +148,49 @@ def run_dbt_test_stg(**kwargs):
 with DAG(
     dag_id="stg_ingestion",
     description="Load latest parquet into stg, run dbt stg models and tests",
-    schedule=None,
+    schedule="@daily",
     start_date=datetime(2024, 1, 1),
     catchup=False,
-    max_active_tasks=1,
+    default_args={
+        "retries": 2,
+        "retry_delay": timedelta(seconds=30),
+    },
     tags=["stg", "ingestion", "dbt"],
 ) as dag:
     sources = load_sources_config(CONFIG_PATH) if CONFIG_PATH.exists() else []
 
-    # One task per source + data_subject combination
+ 
+    SENSOR_DEADLINE = 120  # 120s
+    
+    def _latest_bronze_run(external_dag_id):
+        """Return a fn that finds the most recent execution_date of the bronze DAG."""
+        def fn(logical_date, **kwargs):
+            from airflow.models import DagRun
+            runs = (
+                DagRun.find(dag_id=external_dag_id, state="success")
+                + DagRun.find(dag_id=external_dag_id, state="running")
+            )
+            if runs:
+                runs.sort(key=lambda r: r.execution_date, reverse=True)
+                return runs[0].execution_date
+            return logical_date
+        return fn
+
+    source_names = {s.name for s in sources}
+    sensors: dict[str, ExternalTaskSensor] = {}
+    for name in source_names:
+        sensors[name] = ExternalTaskSensor(
+            task_id=f"wait_bronze_{name}",
+            external_dag_id=f"bronze_{name}",
+            external_task_id=None,
+            mode="reschedule",
+            timeout=SENSOR_DEADLINE,
+            poke_interval=60,
+            soft_fail=True,
+            execution_date_fn=_latest_bronze_run(f"bronze_{name}"),
+        )
+
+    # One load task per source + data_subject, wired to its own sensor only
     load_tasks = []
     seen = set()
     for source in sources:
@@ -147,11 +204,13 @@ with DAG(
                 python_callable=load_subject_tables,
                 op_kwargs={"source_name": source.name, "data_subject": table.data_subject},
             )
+            sensors[source.name] >> task
             load_tasks.append(task)
 
     dbt_run = PythonOperator(
         task_id="dbt_run_stg",
         python_callable=run_dbt_stg,
+        trigger_rule="all_done",
     )
 
     dbt_test = PythonOperator(
@@ -164,4 +223,6 @@ with DAG(
         trigger_dag_id="silver_transform",
     )
 
-    load_tasks >> dbt_run >> dbt_test >> trigger_silver
+    for task in load_tasks:
+        task >> dbt_run
+    dbt_run >> dbt_test >> trigger_silver

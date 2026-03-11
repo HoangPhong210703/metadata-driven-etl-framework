@@ -1,4 +1,4 @@
-{% snapshot silver_customer_dim_customer %}
+{% snapshot silver__customer__dim_customer %}
 
 {{
     config(

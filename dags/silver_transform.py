@@ -50,15 +50,15 @@ def _run_dbt(command: list[str]) -> None:
 
 
 def run_snapshot_dim_customer(**kwargs):
-    _run_dbt(["snapshot", "--select", "silver_customer_dim_customer"])
+    _run_dbt(["snapshot", "--select", "silver__customer__dim_customer"])
 
 
 def run_dim_date(**kwargs):
-    _run_dbt(["run", "--select", "silver_dim_date"])
+    _run_dbt(["run", "--select", "silver__common__dim_date"])
 
 
 def run_fact_lead(**kwargs):
-    _run_dbt(["run", "--select", "silver_crm_fact_lead"])
+    _run_dbt(["run", "--select", "silver__crm__fact_lead"])
 
 
 def run_dbt_test_silver(**kwargs):
@@ -75,17 +75,17 @@ with DAG(
     tags=["silver", "dbt"],
 ) as dag:
     snapshot_task = PythonOperator(
-        task_id="snapshot_silver_customer_dim_customer",
+        task_id="run_silver__customer__dim_customer",
         python_callable=run_snapshot_dim_customer,
     )
 
     dim_date_task = PythonOperator(
-        task_id="run_silver_dim_date",
+        task_id="run_silver__common__dim_date",
         python_callable=run_dim_date,
     )
 
     fact_lead_task = PythonOperator(
-        task_id="run_silver_crm_fact_lead",
+        task_id="run_silver__crm__fact_lead",
         python_callable=run_fact_lead,
     )
 

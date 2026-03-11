@@ -4,8 +4,18 @@ from pathlib import Path
 import dlt
 from dlt.destinations import filesystem
 from dlt.sources.sql_database import sql_database
+from sqlalchemy import create_engine, text
 
 from src.ingestion.config import SourceConfig, load_sources_config
+
+
+def test_source_connection(credentials: str, schema: str) -> None:
+    """Test that the source database is reachable. Raises on failure."""
+    engine = create_engine(credentials)
+    with engine.connect() as conn:
+        conn.execute(text("SELECT 1"))
+    engine.dispose()
+    print(f"[source_connection] Connection to schema '{schema}' OK")
 
 
 def build_layout() -> str:
@@ -128,6 +138,48 @@ def run_source_ingestion(
                 results.append((table_config.name, data_subject, "failed", str(e)))
 
     _print_bronze_summary(source_config.name, results)
+
+
+def run_data_subject_ingestion(
+    source_config: SourceConfig,
+    bucket_url: str,
+    credentials: str,
+    data_subject: str,
+) -> None:
+    """Ingest all tables for a single data_subject."""
+    table_configs = [t for t in source_config.tables if t.data_subject == data_subject]
+    pipeline = build_pipeline(source_config, bucket_url, data_subject)
+    first_run = _is_first_run(pipeline)
+
+    if first_run:
+        print(f"[{source_config.name}/{data_subject}] First run detected — performing full load")
+    else:
+        print(f"[{source_config.name}/{data_subject}] Subsequent run — using configured load strategies")
+
+    table_names = [t.name for t in table_configs]
+    source = sql_database(
+        credentials=credentials,
+        schema=source_config.schema,
+        table_names=table_names,
+        backend="pyarrow",
+    )
+
+    if not first_run:
+        for table_config in table_configs:
+            if table_config.load_strategy == "incremental" and table_config.cursor_column:
+                resource = source.resources[table_config.name]
+                initial_value = table_config.initial_value
+                if initial_value:
+                    initial_value = datetime.datetime.fromisoformat(initial_value)
+                resource.apply_hints(
+                    incremental=dlt.sources.incremental(
+                        table_config.cursor_column,
+                        initial_value=initial_value,
+                    ),
+                )
+
+    load_info = pipeline.run(source, write_disposition="append", loader_file_format="parquet")
+    print(f"[{source_config.name}/{data_subject}] Load complete: {load_info}")
 
 
 def run_all_sources(config_path: Path, bucket_url: str, secrets: dict[str, str]) -> None:
