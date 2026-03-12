@@ -159,38 +159,31 @@ with DAG(
 ) as dag:
     sources = load_sources_config(CONFIG_PATH) if CONFIG_PATH.exists() else []
 
- 
     SENSOR_DEADLINE = 120  # 120s
-    
-    def _latest_bronze_run(external_dag_id):
-        """Return a fn that finds the most recent execution_date of the bronze DAG."""
-        def fn(logical_date, **kwargs):
-            from airflow.models import DagRun
-            runs = (
-                DagRun.find(dag_id=external_dag_id, state="success")
-                + DagRun.find(dag_id=external_dag_id, state="running")
-            )
-            if runs:
-                runs.sort(key=lambda r: r.execution_date, reverse=True)
-                return runs[0].execution_date
-            return logical_date
-        return fn
 
-    source_names = {s.name for s in sources}
-    sensors: dict[str, ExternalTaskSensor] = {}
-    for name in source_names:
-        sensors[name] = ExternalTaskSensor(
-            task_id=f"wait_bronze_{name}",
-            external_dag_id=f"bronze_{name}",
-            external_task_id=None,
-            mode="reschedule",
-            timeout=SENSOR_DEADLINE,
-            poke_interval=60,
-            soft_fail=True,
-            execution_date_fn=_latest_bronze_run(f"bronze_{name}"),
+    def _latest_ingestion_run(logical_date, **kwargs):
+        from airflow.models import DagRun
+        runs = (
+            DagRun.find(dag_id="ingestion", state="success")
+            + DagRun.find(dag_id="ingestion", state="running")
         )
+        if runs:
+            runs.sort(key=lambda r: r.execution_date, reverse=True)
+            return runs[0].execution_date
+        return logical_date
 
-    # One load task per source + data_subject, wired to its own sensor only
+    wait_ingestion = ExternalTaskSensor(
+        task_id="wait_ingestion",
+        external_dag_id="ingestion",
+        external_task_id=None,
+        mode="reschedule",
+        timeout=SENSOR_DEADLINE,
+        poke_interval=60,
+        soft_fail=True,
+        execution_date_fn=_latest_ingestion_run,
+    )
+
+    # One load task per source + data_subject
     load_tasks = []
     seen = set()
     for source in sources:
@@ -204,7 +197,7 @@ with DAG(
                 python_callable=load_subject_tables,
                 op_kwargs={"source_name": source.name, "data_subject": table.data_subject},
             )
-            sensors[source.name] >> task
+            wait_ingestion >> task
             load_tasks.append(task)
 
     dbt_run = PythonOperator(

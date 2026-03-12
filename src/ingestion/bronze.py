@@ -9,6 +9,14 @@ from sqlalchemy import create_engine, text
 from src.ingestion.config import SourceConfig, load_sources_config
 
 
+def _parse_date(value: str) -> datetime.datetime:
+    """Parse a date string in ISO format (2024-01-01) or US format (1/1/2024)."""
+    try:
+        return datetime.datetime.fromisoformat(value)
+    except ValueError:
+        return datetime.datetime.strptime(value, "%m/%d/%Y")
+
+
 def test_source_connection(credentials: str, schema: str) -> None:
     """Test that the source database is reachable. Raises on failure."""
     engine = create_engine(credentials)
@@ -119,7 +127,7 @@ def run_source_ingestion(
                     resource = source.resources[table_config.name]
                     initial_value = table_config.initial_value
                     if initial_value:
-                        initial_value = datetime.datetime.fromisoformat(initial_value)
+                        initial_value = _parse_date(initial_value)
                     resource.apply_hints(
                         incremental=dlt.sources.incremental(
                             table_config.cursor_column,
@@ -170,7 +178,7 @@ def run_data_subject_ingestion(
                 resource = source.resources[table_config.name]
                 initial_value = table_config.initial_value
                 if initial_value:
-                    initial_value = datetime.datetime.fromisoformat(initial_value)
+                    initial_value = _parse_date(initial_value)
                 resource.apply_hints(
                     incremental=dlt.sources.incremental(
                         table_config.cursor_column,
@@ -180,6 +188,60 @@ def run_data_subject_ingestion(
 
     load_info = pipeline.run(source, write_disposition="append", loader_file_format="parquet")
     print(f"[{source_config.name}/{data_subject}] Load complete: {load_info}")
+
+
+def extract_tables(
+    source_config: SourceConfig,
+    bucket_url: str,
+    credentials: str,
+    data_subject: str,
+) -> None:
+    """Fetch data from RDBMS and normalize (extract + normalize step of dlt)."""
+    table_configs = [t for t in source_config.tables if t.data_subject == data_subject]
+    pipeline = build_pipeline(source_config, bucket_url, data_subject)
+    first_run = _is_first_run(pipeline)
+
+    if first_run:
+        print(f"[{source_config.name}/{data_subject}] First run — full load")
+    else:
+        print(f"[{source_config.name}/{data_subject}] Subsequent run — configured strategies")
+
+    table_names = [t.name for t in table_configs]
+    source = sql_database(
+        credentials=credentials,
+        schema=source_config.schema,
+        table_names=table_names,
+        backend="pyarrow",
+    )
+
+    if not first_run:
+        for table_config in table_configs:
+            if table_config.load_strategy == "incremental" and table_config.cursor_column:
+                resource = source.resources[table_config.name]
+                initial_value = table_config.initial_value
+                if initial_value:
+                    initial_value = _parse_date(initial_value)
+                resource.apply_hints(
+                    incremental=dlt.sources.incremental(
+                        table_config.cursor_column,
+                        initial_value=initial_value,
+                    ),
+                )
+
+    pipeline.extract(source, write_disposition="append", loader_file_format="parquet")
+    pipeline.normalize()
+    print(f"[{source_config.name}/{data_subject}] Extract + normalize complete")
+
+
+def load_to_parquet(
+    source_config: SourceConfig,
+    bucket_url: str,
+    data_subject: str,
+) -> None:
+    """Write normalized data to parquet files (load step of dlt)."""
+    pipeline = build_pipeline(source_config, bucket_url, data_subject)
+    load_info = pipeline.load()
+    print(f"[{source_config.name}/{data_subject}] Write parquet complete: {load_info}")
 
 
 def run_all_sources(config_path: Path, bucket_url: str, secrets: dict[str, str]) -> None:

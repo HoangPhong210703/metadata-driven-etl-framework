@@ -2,29 +2,37 @@
 skinparam sequenceMessageAlign center
 skinparam responseMessageBelowArrow true
 
-participant "sources.yaml" as Config
-participant "dlt Pipeline" as DLT
+participant "Button DAGs\n(src2brz_*)" as Buttons
+participant "Coordinator" as Coor
+participant "get_config" as GetCfg
+participant "processing" as Proc
+participant "src2brz_config.csv" as Config
+participant "Ingestion DAG" as Ingest
 participant "Source Database" as Source
 participant "Bronze Layer\n(Local Parquet)" as Bronze
 
-DLT -> Config : Read source & table definitions
-Config --> DLT : Tables, schemas, data subjects
+== Orchestration ==
 
-DLT -> DLT : Group tables by data subject
+Buttons -> Coor : Sensors detect button completions
+Coor -> Coor : Handle errors, determine\nactive data subjects
+Coor -> GetCfg : Trigger with layer + data subjects
 
-loop Each data_subject group
-    DLT -> DLT : Initialize pipeline for this group
+GetCfg -> Config : Read config CSV
+Config --> GetCfg : Active tables (filtered by\ntable_load_active)
+GetCfg -> Proc : Trigger with table configs
 
+Proc -> Proc : Sequence tables by load_sequence
+Proc -> Ingest : Trigger with sequenced groups
 
-      loop Each incremental table
-          DLT -> DLT : Set incremental cursor filter
-      end
+== Ingestion (per source + data_subject) ==
 
+loop Each (source, data_subject) group
+    Ingest -> Source : Test database connection\n(rdbms_src_connect)
 
-    DLT -> Source : Extract table data as PyArrow
-    Source --> DLT : Result rows
+    Ingest -> Source : Extract tables as PyArrow\n+ normalize (fetch_tables)
+    Source --> Ingest : Result rows
 
-    DLT -> Bronze : Write parquet file
+    Ingest -> Bronze : Write parquet files\n(write_parquet)
 end
 
 @enduml
