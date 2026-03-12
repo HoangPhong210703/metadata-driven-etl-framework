@@ -76,7 +76,7 @@ with DAG(
 
     ingest_trigger = TriggerDagRunOperator(
         task_id="ingest_trigger",
-        trigger_dag_id="ingestion",
+        trigger_dag_id="src2brz_rdbms2parquet_ingestion",
         conf="{{ ti.xcom_pull(task_ids='sequence_loads') }}",
     )
 

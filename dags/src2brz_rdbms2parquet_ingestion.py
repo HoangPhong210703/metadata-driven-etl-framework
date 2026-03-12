@@ -100,7 +100,7 @@ for c in _active:
     _groups[key].append(c)
 
 with DAG(
-    dag_id="ingestion",
+    dag_id="src2brz_rdbms2parquet_ingestion",
     description="RDBMS to parquet — per (source, data_subject) task chains",
     schedule=None,
     start_date=datetime(2024, 1, 1),

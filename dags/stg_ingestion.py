@@ -164,8 +164,8 @@ with DAG(
     def _latest_ingestion_run(logical_date, **kwargs):
         from airflow.models import DagRun
         runs = (
-            DagRun.find(dag_id="ingestion", state="success")
-            + DagRun.find(dag_id="ingestion", state="running")
+            DagRun.find(dag_id="src2brz_rdbms2parquet_ingestion", state="success")
+            + DagRun.find(dag_id="src2brz_rdbms2parquet_ingestion", state="running")
         )
         if runs:
             runs.sort(key=lambda r: r.execution_date, reverse=True)
@@ -174,7 +174,7 @@ with DAG(
 
     wait_ingestion = ExternalTaskSensor(
         task_id="wait_ingestion",
-        external_dag_id="ingestion",
+        external_dag_id="src2brz_rdbms2parquet_ingestion",
         external_task_id=None,
         mode="reschedule",
         timeout=SENSOR_DEADLINE,
