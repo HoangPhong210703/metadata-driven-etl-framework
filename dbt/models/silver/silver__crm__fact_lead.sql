@@ -11,7 +11,7 @@ with leads as (
         create_date,
         expected_revenue,
         prorated_revenue
-    from {{ source('stg', 'stg_customer_postgres_crm_crm_lead') }}
+    from {{ source('stg__postgres_crm__customer', 'crm_lead') }}
 ),
 
 customers as (

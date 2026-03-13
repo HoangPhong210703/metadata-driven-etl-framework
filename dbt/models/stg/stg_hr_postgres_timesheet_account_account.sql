@@ -7,7 +7,7 @@
 
 select distinct on (id)
     *
-from {{ source('stg', 'stg_hr_postgres_timesheet_account_account') }}
+from {{ source('stg__postgres_timesheet__hr', 'account_account') }}
 {% if is_incremental() %}
 where _dlt_load_id > (select max(_dlt_load_id) from {{ this }})
 {% endif %}

@@ -77,7 +77,7 @@ with DAG(
 
     processing_trigger = TriggerDagRunOperator(
         task_id="processing_trigger",
-        trigger_dag_id="processing",
+        trigger_dag_id="brz2stg_processing",
         conf="{{ ti.xcom_pull(task_ids='get_config') }}",
     )
 

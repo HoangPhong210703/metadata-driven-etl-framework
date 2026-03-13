@@ -56,22 +56,20 @@ def _get_source_name(kwargs) -> str | None:
     return None
 
 
-def _run_stg_load(pipeline, reader, stg_table_name, source_config, credentials):
+def _run_stg_load(pipeline, reader, table_name, source_name, data_subject, credentials):
     """Run a stg load, resetting pipeline state on schema mismatch."""
-    from dlt.destinations.exceptions import DatabaseUndefinedRelation
-
     try:
         return pipeline.run(
-            reader.with_name(stg_table_name),
+            reader.with_name(table_name),
             write_disposition="replace",
         )
     except Exception as e:
         if "UndefinedRelation" in type(e).__name__ or "does not exist" in str(e):
-            print(f"[stg] Schema mismatch for {stg_table_name} — resetting pipeline state and retrying")
+            print(f"[stg__{source_name}__{data_subject}] Schema mismatch for {table_name} — resetting pipeline state and retrying")
             pipeline.drop()
-            pipeline = build_stg_pipeline(source_config, credentials)
+            pipeline = build_stg_pipeline(source_name, data_subject, credentials)
             return pipeline.run(
-                reader.with_name(stg_table_name),
+                reader.with_name(table_name),
                 write_disposition="replace",
             )
         raise
@@ -85,10 +83,10 @@ def load_subject_tables(source_name: str, data_subject: str, **kwargs):
     source_config = next(s for s in sources if s.name == source_name)
     tables = [t for t in source_config.tables if t.data_subject == data_subject]
 
-    pipeline = build_stg_pipeline(source_config, credentials)
+    pipeline = build_stg_pipeline(source_name, data_subject, credentials)
 
     if pipeline.has_pending_data:
-        print(f"[stg] Dropping pending packages for {pipeline.pipeline_name}")
+        print(f"[stg__{source_name}__{data_subject}] Dropping pending packages for {pipeline.pipeline_name}")
         pipeline.drop_pending_packages()
 
     for table_config in tables:
@@ -103,16 +101,15 @@ def load_subject_tables(source_name: str, data_subject: str, **kwargs):
         latest_file = get_latest_parquet_file(parquet_dir)
 
         if not latest_file:
-            print(f"[stg] No parquet files for {table_config.name}, skipping")
+            print(f"[stg__{source_name}__{data_subject}] No parquet files for {table_config.name}, skipping")
             continue
 
-        stg_table_name = f"stg_{table_config.data_subject}_{source_config.name}_{table_config.name}"
         reader = readers(
             bucket_url=str(latest_file.parent),
             file_glob=latest_file.name,
         ).read_parquet()
-        load_info = _run_stg_load(pipeline, reader, stg_table_name, source_config, credentials)
-        print(f"[stg] Loaded {latest_file.name} → {stg_table_name}: {load_info}")
+        load_info = _run_stg_load(pipeline, reader, table_config.name, source_name, data_subject, credentials)
+        print(f"[stg__{source_name}__{data_subject}] Loaded {latest_file.name} → {table_config.name}: {load_info}")
 
 
 def run_dbt_stg(**kwargs):

@@ -28,15 +28,17 @@ def get_latest_parquet_file(parquet_dir: str) -> Path | None:
 
 
 def build_stg_pipeline(
-    source_config: SourceConfig,
+    source_name: str,
+    data_subject: str,
     warehouse_credentials: str,
 ) -> dlt.Pipeline:
     dest = postgres(credentials=warehouse_credentials)
+    dataset = f"stg__{source_name}__{data_subject}"
 
     return dlt.pipeline(
-        pipeline_name=f"stg_{source_config.name}",
+        pipeline_name=f"stg_{source_name}_{data_subject}",
         destination=dest,
-        dataset_name="stg",
+        dataset_name=dataset,
     )
 
 
@@ -61,39 +63,45 @@ def run_stg_ingestion(
     warehouse_credentials: str,
 ) -> None:
     results: list[tuple] = []
-    pipeline = build_stg_pipeline(source_config, warehouse_credentials)
 
+    # Group tables by data_subject so each group gets its own pipeline/schema
+    subjects: dict[str, list] = {}
     for table_config in source_config.tables:
-        parquet_dir = get_parquet_dir(
-            bronze_base_url=bronze_base_url,
-            data_subject=table_config.data_subject,
-            source_name=source_config.name,
-            schema=source_config.schema,
-            table_name=table_config.name,
-        )
+        subjects.setdefault(table_config.data_subject, []).append(table_config)
 
-        latest_file = get_latest_parquet_file(parquet_dir)
+    for data_subject, tables in subjects.items():
+        pipeline = build_stg_pipeline(source_config.name, data_subject, warehouse_credentials)
 
-        if not latest_file:
-            print(f"[stg_{source_config.name}] No parquet files for {table_config.name}, skipping")
-            results.append((table_config.name, "skipped", 0, "no parquet files"))
-            continue
-
-        try:
-            reader = readers(
-                bucket_url=str(latest_file.parent),
-                file_glob=latest_file.name,
-            ).read_parquet()
-            stg_table_name = f"stg_{table_config.data_subject}_{source_config.name}_{table_config.name}"
-            load_info = pipeline.run(
-                reader.with_name(stg_table_name),
-                write_disposition="replace",
+        for table_config in tables:
+            parquet_dir = get_parquet_dir(
+                bronze_base_url=bronze_base_url,
+                data_subject=table_config.data_subject,
+                source_name=source_config.name,
+                schema=source_config.schema,
+                table_name=table_config.name,
             )
-            print(f"[stg_{source_config.name}] Loaded {latest_file.name} → {stg_table_name}: {load_info}")
-            results.append((table_config.name, "loaded", 1, ""))
-        except Exception as e:
-            print(f"[stg_{source_config.name}] FAILED loading {table_config.name}: {e}")
-            results.append((table_config.name, "failed", 0, str(e)))
+
+            latest_file = get_latest_parquet_file(parquet_dir)
+
+            if not latest_file:
+                print(f"[stg__{source_config.name}__{data_subject}] No parquet files for {table_config.name}, skipping")
+                results.append((table_config.name, "skipped", 0, "no parquet files"))
+                continue
+
+            try:
+                reader = readers(
+                    bucket_url=str(latest_file.parent),
+                    file_glob=latest_file.name,
+                ).read_parquet()
+                load_info = pipeline.run(
+                    reader.with_name(table_config.name),
+                    write_disposition="replace",
+                )
+                print(f"[stg__{source_config.name}__{data_subject}] Loaded {latest_file.name} → {table_config.name}: {load_info}")
+                results.append((table_config.name, "loaded", 1, ""))
+            except Exception as e:
+                print(f"[stg__{source_config.name}__{data_subject}] FAILED loading {table_config.name}: {e}")
+                results.append((table_config.name, "failed", 0, str(e)))
 
     _print_stg_summary(source_config.name, results)
 

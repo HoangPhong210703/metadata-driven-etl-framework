@@ -1,24 +1,24 @@
 id,table_name,table_schema_stg,source_name,source_schema,data_subject,load_strategy,cursor_column,initial_value,primary_key,load_sequence,table_load_active
-1,project_task,stg_project,postgres_crm,public,project,full,,,id,10,TRUE
-2,crm_lead,stg_customer,postgres_crm,public,customer,incremental,write_date,1/1/2024,id,10,TRUE
-3,res_partner,stg_customer,postgres_crm,public,customer,incremental,write_date,1/1/2024,id,10,TRUE
-4,tabCompany,stg_company,mariadb_erp,appdb,company,incremental,modified,1/1/2024,name,10,TRUE
-5,tabCurrency Exchange,stg_company,mariadb_erp,appdb,company,incremental,modified,1/1/2024,name,10,TRUE
-6,tabUnit,stg_company,mariadb_erp,appdb,company,incremental,modified,1/1/2024,name,10,TRUE
-7,tabCustomer,stg_customer,mariadb_erp,appdb,customer,incremental,modified,1/1/2024,name,10,TRUE
-8,tabDelivery KPI,stg_delivery,mariadb_erp,appdb,delivery,incremental,modified,1/1/2024,name,10,TRUE
-9,tabDelivery Monthly KPI,stg_delivery,mariadb_erp,appdb,delivery,incremental,modified,1/1/2024,name,10,TRUE
-10,tabDelivery Resource Item,stg_delivery,mariadb_erp,appdb,delivery,incremental,modified,1/1/2024,name,10,TRUE
-11,tabDepartment,stg_hr,mariadb_erp,appdb,hr,incremental,modified,1/1/2024,name,10,TRUE
-12,tabEmployee,stg_hr,mariadb_erp,appdb,hr,incremental,modified,1/1/2024,name,20,TRUE
-13,tabEmployment Contract,stg_hr,mariadb_erp,appdb,hr,incremental,modified,1/1/2024,name,20,TRUE
-14,tabEmployment Type,stg_hr,mariadb_erp,appdb,hr,incremental,modified,1/1/2024,name,20,TRUE
-15,tabHeadcount Cost,stg_hr,mariadb_erp,appdb,hr,incremental,modified,1/1/2024,name,20,TRUE
-16,tabHoliday,stg_hr,mariadb_erp,appdb,hr,incremental,modified,1/1/2024,name,20,TRUE
-17,tabProject,stg_project,mariadb_erp,appdb,project,incremental,modified,1/1/2024,name,20,TRUE
-18,tabProject Model,stg_project,mariadb_erp,appdb,project,incremental,modified,1/1/2024,name,20,TRUE
-19,tabProject Package,stg_project,mariadb_erp,appdb,project,incremental,modified,1/1/2024,name,20,TRUE
-20,tabProject User,stg_project,mariadb_erp,appdb,project,incremental,modified,1/1/2024,name,20,TRUE
-21,account_account,stg_hr,postgres_timesheet,public,hr,incremental,write_date,1/1/2024,id,20,TRUE
-22,attendance_application,stg_attendance,postgres_timesheet,public,attendance,incremental,write_date,1/1/2024,id,20,TRUE
-23,attendance_summary_log,stg_attendance,postgres_timesheet,public,attendance,incremental,write_date,1/1/2024,id,20,TRUE
+1,project_task,stg__postgres_crm__project,postgres_crm,public,project,full,,,id,10,TRUE
+2,crm_lead,stg__postgres_crm__customer,postgres_crm,public,customer,incremental,write_date,1/1/2024,id,10,TRUE
+3,res_partner,stg__postgres_crm__customer,postgres_crm,public,customer,incremental,write_date,1/1/2024,id,10,TRUE
+4,tabCompany,stg__mariadb_erp__company,mariadb_erp,appdb,company,incremental,modified,1/1/2024,name,10,TRUE
+5,tabCurrency Exchange,stg__mariadb_erp__company,mariadb_erp,appdb,company,incremental,modified,1/1/2024,name,10,TRUE
+6,tabUnit,stg__mariadb_erp__company,mariadb_erp,appdb,company,incremental,modified,1/1/2024,name,10,TRUE
+7,tabCustomer,stg__mariadb_erp__customer,mariadb_erp,appdb,customer,incremental,modified,1/1/2024,name,10,TRUE
+8,tabDelivery KPI,stg__mariadb_erp__delivery,mariadb_erp,appdb,delivery,incremental,modified,1/1/2024,name,10,TRUE
+9,tabDelivery Monthly KPI,stg__mariadb_erp__delivery,mariadb_erp,appdb,delivery,incremental,modified,1/1/2024,name,10,TRUE
+10,tabDelivery Resource Item,stg__mariadb_erp__delivery,mariadb_erp,appdb,delivery,incremental,modified,1/1/2024,name,10,TRUE
+11,tabDepartment,stg__mariadb_erp__hr,mariadb_erp,appdb,hr,incremental,modified,1/1/2024,name,10,TRUE
+12,tabEmployee,stg__mariadb_erp__hr,mariadb_erp,appdb,hr,incremental,modified,1/1/2024,name,20,TRUE
+13,tabEmployment Contract,stg__mariadb_erp__hr,mariadb_erp,appdb,hr,incremental,modified,1/1/2024,name,20,TRUE
+14,tabEmployment Type,stg__mariadb_erp__hr,mariadb_erp,appdb,hr,incremental,modified,1/1/2024,name,20,TRUE
+15,tabHeadcount Cost,stg__mariadb_erp__hr,mariadb_erp,appdb,hr,incremental,modified,1/1/2024,name,20,TRUE
+16,tabHoliday,stg__mariadb_erp__hr,mariadb_erp,appdb,hr,incremental,modified,1/1/2024,name,20,TRUE
+17,tabProject,stg__mariadb_erp__project,mariadb_erp,appdb,project,incremental,modified,1/1/2024,name,20,TRUE
+18,tabProject Model,stg__mariadb_erp__project,mariadb_erp,appdb,project,incremental,modified,1/1/2024,name,20,TRUE
+19,tabProject Package,stg__mariadb_erp__project,mariadb_erp,appdb,project,incremental,modified,1/1/2024,name,20,TRUE
+20,tabProject User,stg__mariadb_erp__project,mariadb_erp,appdb,project,incremental,modified,1/1/2024,name,20,TRUE
+21,account_account,stg__postgres_timesheet__hr,postgres_timesheet,public,hr,incremental,write_date,1/1/2024,id,20,TRUE
+22,attendance_application,stg__postgres_timesheet__attendance,postgres_timesheet,public,attendance,incremental,write_date,1/1/2024,id,20,TRUE
+23,attendance_summary_log,stg__postgres_timesheet__attendance,postgres_timesheet,public,attendance,incremental,write_date,1/1/2024,id,20,TRUE
