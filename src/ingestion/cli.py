@@ -1,7 +1,7 @@
 import argparse
 from pathlib import Path
 
-from src.ingestion.config import load_sources_config
+from src.ingestion.config import load_source_configs
 from src.ingestion.bronze import run_source_ingestion
 
 
@@ -31,8 +31,8 @@ def main():
     parser.add_argument(
         "--config",
         type=Path,
-        default=Path("config/sources.yaml"),
-        help="Path to sources.yaml config file",
+        default=Path("config/src2brz_config.csv"),
+        help="Path to CSV config file",
     )
     parser.add_argument(
         "--secrets",
@@ -54,7 +54,7 @@ def main():
     )
     args = parser.parse_args()
 
-    sources = load_sources_config(args.config)
+    sources = load_source_configs(args.config)
     secrets = load_secrets(args.secrets)
 
     for source_config in sources:

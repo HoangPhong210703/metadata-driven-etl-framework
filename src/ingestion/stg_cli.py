@@ -4,7 +4,7 @@ import subprocess
 from pathlib import Path
 from urllib.parse import urlparse
 
-from src.ingestion.config import load_sources_config
+from src.ingestion.config import load_source_configs
 from src.ingestion.stg import run_stg_ingestion
 
 
@@ -58,8 +58,8 @@ def main():
     parser.add_argument(
         "--config",
         type=Path,
-        default=Path("config/sources.yaml"),
-        help="Path to sources.yaml config file",
+        default=Path("config/src2brz_config.csv"),
+        help="Path to CSV config file",
     )
     parser.add_argument(
         "--secrets",
@@ -98,7 +98,7 @@ def main():
     )
     args = parser.parse_args()
 
-    sources = load_sources_config(args.config)
+    sources = load_source_configs(args.config)
     warehouse_credentials = load_warehouse_credentials(args.secrets)
 
     # Step 1: dlt — load recent parquet → stg_temp
@@ -106,7 +106,7 @@ def main():
         if args.source and source_config.name != args.source:
             continue
         print(f"[stg_{source_config.name}] Loading parquet into stg_temp...")
-        run_stg_ingestion(source_config, args.bronze_url, warehouse_credentials, args.retention_days)
+        run_stg_ingestion(source_config, args.bronze_url, warehouse_credentials)
 
     # Step 2: dbt — build stg newest tables
     if not args.skip_dbt:

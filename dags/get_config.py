@@ -6,9 +6,9 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-from airflow import DAG
-from airflow.operators.python import PythonOperator
-from airflow.operators.trigger_dagrun import TriggerDagRunOperator
+from airflow import DAG  # type: ignore
+from airflow.operators.python import PythonOperator  # type: ignore
+from airflow.operators.trigger_dagrun import TriggerDagRunOperator  # type: ignore
 
 sys.path.insert(0, "/opt/airflow")
 
@@ -19,7 +19,7 @@ CONFIG_FILES = {
 
 def get_config(**kwargs):
     """Read the layer config CSV, filter by active data subjects from coordinator."""
-    from src.ingestion.config_csv import load_csv_config, get_active_tables
+    from src.ingestion.config import load_csv_config, get_active_tables
 
     dag_run = kwargs["dag_run"]
     conf = dag_run.conf or {}

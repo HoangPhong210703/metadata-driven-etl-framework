@@ -6,9 +6,9 @@ import sys
 from collections import defaultdict
 from datetime import datetime
 
-from airflow import DAG
-from airflow.operators.python import PythonOperator
-from airflow.operators.trigger_dagrun import TriggerDagRunOperator
+from airflow import DAG # type: ignore
+from airflow.operators.python import PythonOperator # type: ignore
+from airflow.operators.trigger_dagrun import TriggerDagRunOperator # type: ignore
 
 sys.path.insert(0, "/opt/airflow")
 

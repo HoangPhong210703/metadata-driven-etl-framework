@@ -6,15 +6,15 @@ import sys
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from airflow import DAG
-from airflow.operators.python import PythonOperator
-from airflow.operators.trigger_dagrun import TriggerDagRunOperator
-from airflow.sensors.external_task import ExternalTaskSensor
-from airflow.sensors.time_delta import TimeDeltaSensor
+from airflow import DAG  # type: ignore
+from airflow.operators.python import PythonOperator  # type: ignore
+from airflow.operators.trigger_dagrun import TriggerDagRunOperator  # type: ignore
+from airflow.sensors.external_task import ExternalTaskSensor  # type: ignore
+from airflow.sensors.time_delta import TimeDeltaSensor  # type: ignore
 
 sys.path.insert(0, "/opt/airflow")
 
-from src.ingestion.config_csv import load_csv_config, get_data_subjects
+from src.ingestion.config import load_csv_config, get_data_subjects
 
 CONFIG_PATH = Path("/opt/airflow/config/src2brz_config.csv")
 SENSOR_DEADLINE = 60 * 60  # 1 hour
@@ -23,8 +23,8 @@ SENSOR_DEADLINE = 60 * 60  # 1 hour
 def _recent_run(external_dag_id):
     """Find a successful run of the external DAG from the last 60 seconds."""
     def fn(logical_date, **kwargs):
-        from airflow.models import DagRun
-        from airflow.utils import timezone
+        from airflow.models import DagRun # type: ignore
+        from airflow.utils import timezone # type: ignore
         now = timezone.utcnow()
         cutoff = now - timedelta(seconds=60)
         runs = DagRun.find(
@@ -55,7 +55,7 @@ def coor(**kwargs):
                 print(f"[coordinator] {ti.task_id}: {ti.state} — skipping {ds}")
 
     if not active_subjects:
-        from airflow.exceptions import AirflowSkipException
+        from airflow.exceptions import AirflowSkipException # type: ignore
         raise AirflowSkipException("No button DAGs completed — nothing to process")
 
     config = {"layer": "src2brz", "data_subjects": sorted(active_subjects)}

@@ -6,8 +6,8 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-from airflow import DAG
-from airflow.operators.python import PythonOperator
+from airflow import DAG  # type: ignore
+from airflow.operators.python import PythonOperator  # type: ignore
 
 sys.path.insert(0, "/opt/airflow")
 

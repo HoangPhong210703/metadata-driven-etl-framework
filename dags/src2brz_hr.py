@@ -2,8 +2,8 @@
 
 from datetime import datetime
 
-from airflow import DAG
-from airflow.operators.empty import EmptyOperator
+from airflow import DAG  # type: ignore
+from airflow.operators.empty import EmptyOperator  # type: ignore
 
 with DAG(
     dag_id="src2brz_hr",

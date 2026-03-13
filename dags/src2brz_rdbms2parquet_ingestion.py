@@ -9,12 +9,12 @@ from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
 
-from airflow import DAG
-from airflow.operators.python import PythonOperator
+from airflow import DAG  # type: ignore
+from airflow.operators.python import PythonOperator  # type: ignore
 
 sys.path.insert(0, "/opt/airflow")
 
-from src.ingestion.config_csv import load_csv_config, get_active_tables
+from src.ingestion.config import load_csv_config, get_active_tables, csv_to_source_configs
 
 CONFIG_PATH = Path("/opt/airflow/config/src2brz_config.csv")
 SECRETS_PATH = Path("/opt/airflow/.dlt/secrets.toml")
@@ -35,7 +35,7 @@ def rdbms_src_connect(source_name: str, source_schema: str, data_subject: str, *
     if dag_run and dag_run.conf:
         active_subjects = dag_run.conf.get("data_subjects", [])
         if active_subjects and data_subject not in active_subjects:
-            from airflow.exceptions import AirflowSkipException
+            from airflow.exceptions import AirflowSkipException # type: ignore
             raise AirflowSkipException(f"Data subject '{data_subject}' not in active list")
 
     from src.ingestion.bronze import test_source_connection
@@ -46,9 +46,7 @@ def rdbms_src_connect(source_name: str, source_schema: str, data_subject: str, *
 def fetch_tables(source_name: str, source_schema: str, data_subject: str, **kwargs):
     """Extract data from RDBMS and normalize."""
     from src.ingestion.bronze import extract_tables
-    from src.ingestion.config import SourceConfig, TableConfig
 
-    # Build a SourceConfig from CSV data
     configs = load_csv_config(CONFIG_PATH)
     tables_for_group = [
         c for c in configs
@@ -58,21 +56,7 @@ def fetch_tables(source_name: str, source_schema: str, data_subject: str, **kwar
     ]
     tables_for_group.sort(key=lambda c: c.load_sequence)
 
-    source_config = SourceConfig(
-        name=source_name,
-        schema=source_schema,
-        tables=[
-            TableConfig(
-                name=c.table_name,
-                load_strategy=c.load_strategy,
-                data_subject=c.data_subject,
-                cursor_column=c.cursor_column or None,
-                initial_value=c.initial_value or None,
-                primary_key=[c.primary_key] if c.primary_key else None,
-            )
-            for c in tables_for_group
-        ],
-    )
+    source_config = csv_to_source_configs(tables_for_group)[0]
 
     credentials = _load_credentials(source_name)
     extract_tables(source_config, BUCKET_URL, credentials, data_subject)
@@ -83,8 +67,7 @@ def write_parquet(source_name: str, source_schema: str, data_subject: str, **kwa
     from src.ingestion.bronze import load_to_parquet
     from src.ingestion.config import SourceConfig
 
-    source_config = SourceConfig(name=source_name, schema=source_schema, tables=[])
-    load_to_parquet(source_config, BUCKET_URL, data_subject)
+    load_to_parquet(SourceConfig(name=source_name, schema=source_schema, tables=[]), BUCKET_URL, data_subject)
 
 
 # --- Build task chains at parse time from CSV ---
@@ -133,4 +116,4 @@ with DAG(
             op_kwargs=op_kwargs,
         )
 
-        connect >> fetch >> write
+        connect >> fetch >> write # type: ignore

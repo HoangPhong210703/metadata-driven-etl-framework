@@ -4,15 +4,15 @@ import sys
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from airflow import DAG
-from airflow.operators.python import PythonOperator
+from airflow import DAG  # type: ignore
+from airflow.operators.python import PythonOperator  # type: ignore
 
 sys.path.insert(0, "/opt/airflow")
 
-from src.ingestion.config import load_sources_config
+from src.ingestion.config import load_source_configs
 from src.ingestion.bronze import rotate_todays_parquet, run_data_subject_ingestion, test_source_connection
 
-CONFIG_PATH = Path("/opt/airflow/config/sources.yaml")
+CONFIG_PATH = Path("/opt/airflow/config/src2brz_config.csv")
 SECRETS_PATH = Path("/opt/airflow/.dlt/secrets.toml")
 BUCKET_URL = "/opt/airflow/data/bronze"
 SOURCE_NAME = "postgres_timesheet"
@@ -27,20 +27,20 @@ def _load_credentials() -> str:
 
 
 def rotate(**kwargs):
-    sources = load_sources_config(CONFIG_PATH)
+    sources = load_source_configs(CONFIG_PATH)
     source_config = next(s for s in sources if s.name == SOURCE_NAME)
     rotate_todays_parquet(BUCKET_URL, source_config)
 
 
 def source_connection(**kwargs):
-    sources = load_sources_config(CONFIG_PATH)
+    sources = load_source_configs(CONFIG_PATH)
     source_config = next(s for s in sources if s.name == SOURCE_NAME)
     credentials = _load_credentials()
     test_source_connection(credentials, source_config.schema)
 
 
 def fetch_data_subject(data_subject: str, **kwargs):
-    sources = load_sources_config(CONFIG_PATH)
+    sources = load_source_configs(CONFIG_PATH)
     source_config = next(s for s in sources if s.name == SOURCE_NAME)
     credentials = _load_credentials()
     run_data_subject_ingestion(source_config, BUCKET_URL, credentials, data_subject)
@@ -63,7 +63,7 @@ with DAG(
     #rotate_task = PythonOperator(task_id="rotate_parquet", python_callable=rotate)
     source_connection_task = PythonOperator(task_id="source_connection", python_callable=source_connection)
 
-    sources = load_sources_config(CONFIG_PATH) if CONFIG_PATH.exists() else []
+    sources = load_source_configs(CONFIG_PATH) if CONFIG_PATH.exists() else []
     source_config = next((s for s in sources if s.name == SOURCE_NAME), None)
 
     if source_config:

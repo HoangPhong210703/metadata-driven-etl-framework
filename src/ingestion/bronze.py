@@ -6,7 +6,7 @@ from dlt.destinations import filesystem
 from dlt.sources.sql_database import sql_database
 from sqlalchemy import create_engine, text
 
-from src.ingestion.config import SourceConfig, load_sources_config
+from src.ingestion.config import SourceConfig, load_source_configs
 
 
 def _parse_date(value: str) -> datetime.datetime:
@@ -245,7 +245,7 @@ def load_to_parquet(
 
 
 def run_all_sources(config_path: Path, bucket_url: str, secrets: dict[str, str]) -> None:
-    sources = load_sources_config(config_path)
+    sources = load_source_configs(config_path)
 
     for source_config in sources:
         credentials = secrets.get(source_config.name)

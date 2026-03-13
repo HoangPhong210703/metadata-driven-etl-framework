@@ -10,21 +10,17 @@ import sys
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from airflow import DAG
-from airflow.operators.python import PythonOperator
-from airflow.operators.trigger_dagrun import TriggerDagRunOperator
-from airflow.sensors.external_task import ExternalTaskSensor
+from airflow import DAG  # type: ignore
+from airflow.operators.python import PythonOperator  # type: ignore
+from airflow.operators.trigger_dagrun import TriggerDagRunOperator  # type: ignore
+from airflow.sensors.external_task import ExternalTaskSensor  # type: ignore
 
 sys.path.insert(0, "/opt/airflow")
 
-from src.ingestion.config import load_sources_config
-from src.ingestion.stg import (
-    build_stg_pipeline,
-    get_parquet_dir,
-    get_latest_parquet_file,
-)
+from src.ingestion.config import load_source_configs
+from src.ingestion.stg import run_stg_subject
 
-CONFIG_PATH = Path("/opt/airflow/config/sources.yaml")
+CONFIG_PATH = Path("/opt/airflow/config/src2brz_config.csv")
 SECRETS_PATH = Path("/opt/airflow/.dlt/secrets.toml")
 BRONZE_BASE_URL = "/opt/airflow/data/bronze"
 DBT_PROJECT_DIR = Path("/opt/airflow/dbt")
@@ -49,67 +45,20 @@ def _set_dbt_env_vars(credentials: str) -> None:
     os.environ["WAREHOUSE_DB"] = (parsed.path or "").lstrip("/")
 
 
-def _get_source_name(kwargs) -> str | None:
-    dag_run = kwargs.get("dag_run")
-    if dag_run and dag_run.conf:
-        return dag_run.conf.get("source_name")
-    return None
-
-
-def _run_stg_load(pipeline, reader, table_name, source_name, data_subject, credentials):
-    """Run a stg load, resetting pipeline state on schema mismatch."""
-    try:
-        return pipeline.run(
-            reader.with_name(table_name),
-            write_disposition="replace",
-        )
-    except Exception as e:
-        if "UndefinedRelation" in type(e).__name__ or "does not exist" in str(e):
-            print(f"[stg__{source_name}__{data_subject}] Schema mismatch for {table_name} — resetting pipeline state and retrying")
-            pipeline.drop()
-            pipeline = build_stg_pipeline(source_name, data_subject, credentials)
-            return pipeline.run(
-                reader.with_name(table_name),
-                write_disposition="replace",
-            )
-        raise
-
-
-def load_subject_tables(source_name: str, data_subject: str, **kwargs):
-    from dlt.sources.filesystem import readers
-
-    sources = load_sources_config(CONFIG_PATH)
-    credentials = _load_warehouse_credentials()
+def load_subject_tables(source_name: str, source_schema: str, data_subject: str, **kwargs):
+    sources = load_source_configs(CONFIG_PATH)
     source_config = next(s for s in sources if s.name == source_name)
     tables = [t for t in source_config.tables if t.data_subject == data_subject]
+    credentials = _load_warehouse_credentials()
 
-    pipeline = build_stg_pipeline(source_name, data_subject, credentials)
-
-    if pipeline.has_pending_data:
-        print(f"[stg__{source_name}__{data_subject}] Dropping pending packages for {pipeline.pipeline_name}")
-        pipeline.drop_pending_packages()
-
-    for table_config in tables:
-        parquet_dir = get_parquet_dir(
-            bronze_base_url=BRONZE_BASE_URL,
-            data_subject=table_config.data_subject,
-            source_name=source_config.name,
-            schema=source_config.schema,
-            table_name=table_config.name,
-        )
-
-        latest_file = get_latest_parquet_file(parquet_dir)
-
-        if not latest_file:
-            print(f"[stg__{source_name}__{data_subject}] No parquet files for {table_config.name}, skipping")
-            continue
-
-        reader = readers(
-            bucket_url=str(latest_file.parent),
-            file_glob=latest_file.name,
-        ).read_parquet()
-        load_info = _run_stg_load(pipeline, reader, table_config.name, source_name, data_subject, credentials)
-        print(f"[stg__{source_name}__{data_subject}] Loaded {latest_file.name} → {table_config.name}: {load_info}")
+    run_stg_subject(
+        source_name=source_name,
+        source_schema=source_schema,
+        data_subject=data_subject,
+        tables=tables,
+        bronze_base_url=BRONZE_BASE_URL,
+        warehouse_credentials=credentials,
+    )
 
 
 def run_dbt_stg(**kwargs):
@@ -154,12 +103,12 @@ with DAG(
     },
     tags=["stg", "ingestion", "dbt"],
 ) as dag:
-    sources = load_sources_config(CONFIG_PATH) if CONFIG_PATH.exists() else []
+    sources = load_source_configs(CONFIG_PATH) if CONFIG_PATH.exists() else []
 
     SENSOR_DEADLINE = 120  # 120s
 
     def _latest_ingestion_run(logical_date, **kwargs):
-        from airflow.models import DagRun
+        from airflow.models import DagRun # type: ignore
         runs = (
             DagRun.find(dag_id="src2brz_rdbms2parquet_ingestion", state="success")
             + DagRun.find(dag_id="src2brz_rdbms2parquet_ingestion", state="running")
@@ -192,7 +141,11 @@ with DAG(
             task = PythonOperator(
                 task_id=f"load_{source.name}__{table.data_subject}",
                 python_callable=load_subject_tables,
-                op_kwargs={"source_name": source.name, "data_subject": table.data_subject},
+                op_kwargs={
+                    "source_name": source.name,
+                    "source_schema": source.schema,
+                    "data_subject": table.data_subject,
+                },
             )
             wait_ingestion >> task
             load_tasks.append(task)

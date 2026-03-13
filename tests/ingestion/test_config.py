@@ -1,132 +1,165 @@
 import pytest
 from pathlib import Path
-from src.ingestion.config import load_sources_config, SourceConfig, TableConfig
+from src.ingestion.config import (
+    load_csv_config,
+    load_source_configs,
+    csv_to_source_configs,
+    get_active_tables,
+    get_data_subjects,
+    get_active_data_subjects,
+    CsvTableConfig,
+    SourceConfig,
+    TableConfig,
+)
+
+CSV_HEADER = "id,table_name,table_schema_stg,source_name,source_schema,data_subject,load_strategy,cursor_column,initial_value,primary_key,load_sequence,table_load_active"
 
 
 @pytest.fixture
-def sample_config_path(tmp_path):
-    config_content = """
-sources:
-  - name: test_db
-    schema: public
-    tables:
-      - name: users
-        load_strategy: full
-        data_subject: test
-      - name: events
-        load_strategy: incremental
-        data_subject: test
-        cursor_column: created_at
-        initial_value: "2024-01-01"
+def sample_csv(tmp_path):
+    content = f"""{CSV_HEADER}
+1,users,stg__auth__test_db,test_db,public,auth,full,,,id,10,TRUE
+2,events,stg__analytics__test_db,test_db,public,analytics,incremental,created_at,2024-01-01,id,20,TRUE
+3,logs,stg__analytics__test_db,test_db,public,analytics,append,,,id,30,FALSE
 """
-    config_file = tmp_path / "sources.yaml"
-    config_file.write_text(config_content)
-    return config_file
+    csv_file = tmp_path / "config.csv"
+    csv_file.write_text(content)
+    return csv_file
 
 
-def test_load_sources_config_returns_list(sample_config_path):
-    sources = load_sources_config(sample_config_path)
-    assert isinstance(sources, list)
-    assert len(sources) == 1
+def test_load_csv_config_returns_list(sample_csv):
+    configs = load_csv_config(sample_csv)
+    assert isinstance(configs, list)
+    assert len(configs) == 3
+    assert all(isinstance(c, CsvTableConfig) for c in configs)
 
 
-def test_source_config_fields(sample_config_path):
-    sources = load_sources_config(sample_config_path)
-    source = sources[0]
-    assert isinstance(source, SourceConfig)
-    assert source.name == "test_db"
-    assert source.schema == "public"
-    assert len(source.tables) == 2
+def test_csv_table_config_fields(sample_csv):
+    configs = load_csv_config(sample_csv)
+    c = configs[0]
+    assert c.id == 1
+    assert c.table_name == "users"
+    assert c.source_name == "test_db"
+    assert c.source_schema == "public"
+    assert c.data_subject == "auth"
+    assert c.load_strategy == "full"
+    assert c.cursor_column == ""
+    assert c.primary_key == "id"
+    assert c.load_sequence == 10
+    assert c.table_load_active is True
 
 
-def test_table_config_full_strategy(sample_config_path):
-    sources = load_sources_config(sample_config_path)
-    table = sources[0].tables[0]
-    assert isinstance(table, TableConfig)
-    assert table.name == "users"
-    assert table.load_strategy == "full"
-    assert table.data_subject == "test"
-    assert table.cursor_column is None
-    assert table.initial_value is None
+def test_csv_incremental_fields(sample_csv):
+    configs = load_csv_config(sample_csv)
+    c = configs[1]
+    assert c.table_name == "events"
+    assert c.load_strategy == "incremental"
+    assert c.cursor_column == "created_at"
+    assert c.initial_value == "2024-01-01"
 
 
-def test_table_config_incremental_strategy(sample_config_path):
-    sources = load_sources_config(sample_config_path)
-    table = sources[0].tables[1]
-    assert table.name == "events"
-    assert table.load_strategy == "incremental"
-    assert table.data_subject == "test"
-    assert table.cursor_column == "created_at"
-    assert table.initial_value == "2024-01-01"
+def test_csv_inactive_table(sample_csv):
+    configs = load_csv_config(sample_csv)
+    c = configs[2]
+    assert c.table_name == "logs"
+    assert c.table_load_active is False
 
 
-def test_load_config_file_not_found():
+def test_load_csv_config_file_not_found():
     with pytest.raises(FileNotFoundError):
-        load_sources_config(Path("/nonexistent/sources.yaml"))
+        load_csv_config(Path("/nonexistent/config.csv"))
 
 
-def test_load_config_missing_required_field(tmp_path):
-    bad_config = tmp_path / "bad.yaml"
-    bad_config.write_text("sources:\n  - name: test_db\n    tables: []")
-    with pytest.raises(ValueError, match="schema"):
-        load_sources_config(bad_config)
+def test_get_active_tables(sample_csv):
+    configs = load_csv_config(sample_csv)
+    active = get_active_tables(configs)
+    assert len(active) == 2
+    assert active[0].table_name == "users"
+    assert active[1].table_name == "events"
 
 
-def test_invalid_load_strategy(tmp_path):
-    bad_config = tmp_path / "bad.yaml"
-    bad_config.write_text(
-        "sources:\n  - name: db\n    schema: public\n"
-        "    tables:\n      - name: t\n        load_strategy: bogus\n        data_subject: x"
-    )
-    with pytest.raises(ValueError, match="Invalid load_strategy"):
-        load_sources_config(bad_config)
+def test_get_active_tables_sorted_by_load_sequence(sample_csv):
+    configs = load_csv_config(sample_csv)
+    active = get_active_tables(configs)
+    sequences = [c.load_sequence for c in active]
+    assert sequences == sorted(sequences)
 
 
-def test_incremental_without_cursor_column(tmp_path):
-    bad_config = tmp_path / "bad.yaml"
-    bad_config.write_text(
-        "sources:\n  - name: db\n    schema: public\n"
-        "    tables:\n      - name: t\n        load_strategy: incremental\n        data_subject: x"
-    )
-    with pytest.raises(ValueError, match="cursor_column"):
-        load_sources_config(bad_config)
+def test_get_data_subjects(sample_csv):
+    configs = load_csv_config(sample_csv)
+    subjects = get_data_subjects(configs)
+    assert subjects == {"auth", "analytics"}
 
 
-def test_table_config_single_primary_key(tmp_path):
-    config = tmp_path / "sources.yaml"
-    config.write_text("""
-sources:
-  - name: db
-    schema: public
-    tables:
-      - name: t
-        load_strategy: full
-        data_subject: x
-        primary_key: id
-""")
-    sources = load_sources_config(config)
-    assert sources[0].tables[0].primary_key == ["id"]
+def test_get_active_data_subjects(sample_csv):
+    configs = load_csv_config(sample_csv)
+    subjects = get_active_data_subjects(configs)
+    assert subjects == {"auth", "analytics"}
 
 
-def test_table_config_composite_primary_key(tmp_path):
-    config = tmp_path / "sources.yaml"
-    config.write_text("""
-sources:
-  - name: db
-    schema: public
-    tables:
-      - name: t
-        load_strategy: full
-        data_subject: x
-        primary_key:
-          - org_id
-          - user_id
-""")
-    sources = load_sources_config(config)
-    assert sources[0].tables[0].primary_key == ["org_id", "user_id"]
+def test_csv_to_source_configs(sample_csv):
+    configs = load_csv_config(sample_csv)
+    sources = csv_to_source_configs(configs)
+    assert len(sources) == 1
+    assert isinstance(sources[0], SourceConfig)
+    assert sources[0].name == "test_db"
+    assert sources[0].schema == "public"
+    assert len(sources[0].tables) == 3
 
 
-def test_table_config_no_primary_key(sample_config_path):
-    sources = load_sources_config(sample_config_path)
-    table = sources[0].tables[0]
-    assert table.primary_key is None
+def test_csv_to_source_configs_table_fields(sample_csv):
+    configs = load_csv_config(sample_csv)
+    sources = csv_to_source_configs(configs)
+    tables = sources[0].tables
+
+    assert isinstance(tables[0], TableConfig)
+    assert tables[0].name == "users"
+    assert tables[0].load_strategy == "full"
+    assert tables[0].data_subject == "auth"
+    assert tables[0].cursor_column is None
+    assert tables[0].primary_key == ["id"]
+
+    assert tables[1].name == "events"
+    assert tables[1].load_strategy == "incremental"
+    assert tables[1].cursor_column == "created_at"
+    assert tables[1].initial_value == "2024-01-01"
+
+
+def test_csv_to_source_configs_multiple_sources(tmp_path):
+    content = f"""{CSV_HEADER}
+1,users,stg__auth__db1,db1,public,auth,full,,,id,10,TRUE
+2,orders,stg__sales__db2,db2,appdb,sales,incremental,modified,,id,10,TRUE
+"""
+    csv_file = tmp_path / "config.csv"
+    csv_file.write_text(content)
+
+    configs = load_csv_config(csv_file)
+    sources = csv_to_source_configs(configs)
+    assert len(sources) == 2
+    names = {s.name for s in sources}
+    assert names == {"db1", "db2"}
+
+    db2 = next(s for s in sources if s.name == "db2")
+    assert db2.schema == "appdb"
+
+
+def test_load_source_configs(sample_csv):
+    """End-to-end: load CSV → active tables only → SourceConfig objects."""
+    sources = load_source_configs(sample_csv)
+    assert len(sources) == 1
+    # Only active tables (2 of 3)
+    assert len(sources[0].tables) == 2
+    table_names = [t.name for t in sources[0].tables]
+    assert "logs" not in table_names
+
+
+def test_csv_no_primary_key(tmp_path):
+    content = f"""{CSV_HEADER}
+1,t,stg__x__db,db,public,x,full,,,,10,TRUE
+"""
+    csv_file = tmp_path / "config.csv"
+    csv_file.write_text(content)
+
+    configs = load_csv_config(csv_file)
+    sources = csv_to_source_configs(configs)
+    assert sources[0].tables[0].primary_key is None
