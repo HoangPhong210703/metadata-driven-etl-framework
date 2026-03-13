@@ -33,7 +33,7 @@ def build_stg_pipeline(
     warehouse_credentials: str,
 ) -> dlt.Pipeline:
     dest = postgres(credentials=warehouse_credentials)
-    dataset = f"stg__{source_name}__{data_subject}"
+    dataset = f"stg__{data_subject}__{source_name}"
 
     return dlt.pipeline(
         pipeline_name=f"stg_{source_name}_{data_subject}",
@@ -84,7 +84,7 @@ def run_stg_ingestion(
             latest_file = get_latest_parquet_file(parquet_dir)
 
             if not latest_file:
-                print(f"[stg__{source_config.name}__{data_subject}] No parquet files for {table_config.name}, skipping")
+                print(f"[stg__{data_subject}__{source_config.name}] No parquet files for {table_config.name}, skipping")
                 results.append((table_config.name, "skipped", 0, "no parquet files"))
                 continue
 
@@ -97,10 +97,10 @@ def run_stg_ingestion(
                     reader.with_name(table_config.name),
                     write_disposition="replace",
                 )
-                print(f"[stg__{source_config.name}__{data_subject}] Loaded {latest_file.name} → {table_config.name}: {load_info}")
+                print(f"[stg__{data_subject}__{source_config.name}] Loaded {latest_file.name} → {table_config.name}: {load_info}")
                 results.append((table_config.name, "loaded", 1, ""))
             except Exception as e:
-                print(f"[stg__{source_config.name}__{data_subject}] FAILED loading {table_config.name}: {e}")
+                print(f"[stg__{data_subject}__{source_config.name}] FAILED loading {table_config.name}: {e}")
                 results.append((table_config.name, "failed", 0, str(e)))
 
     _print_stg_summary(source_config.name, results)
