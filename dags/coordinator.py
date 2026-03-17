@@ -18,13 +18,14 @@ def coor(**kwargs):
     conf = dag_run.conf or {}
     subject = conf.get("data_subject")
     source = conf.get("source")
+    layer = conf.get("layer", "src2brz")
     
     if not subject:
         print("[coordinator] Không tìm thấy 'data_subject' trong cấu hình. Bỏ qua pipeline.")
         raise AirflowSkipException("No data subject provided in conf — nothing to process")
 
     # Đóng gói lại thành cấu hình chuẩn để đẩy xuống layer tiếp theo
-    config = {"layer": "src2brz", "data_subjects": [subject]}
+    config = {"layer": layer, "data_subjects": [subject], "target_dag": f"{layer}_get_config"}
     
     # Nếu có source được chỉ định, thêm vào config
     if source:
@@ -55,7 +56,7 @@ with DAG(
     # Task 2: Gọi DAG get_config và truyền cấu hình vừa tạo qua XCom
     get_config_trigger = TriggerDagRunOperator(
         task_id="get_config_trigger",
-        trigger_dag_id="get_config",
+        trigger_dag_id="{{ ti.xcom_pull(task_ids='coor')['target_dag'] }}",
         conf="{{ ti.xcom_pull(task_ids='coor') }}",
     )
 

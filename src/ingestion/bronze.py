@@ -30,18 +30,18 @@ def build_layout() -> str:
     return "{table_name}/{DD}-{MM}-{YYYY}.{ext}"
 
 
-def build_bucket_url(base_url: str, source_config: SourceConfig, data_subject: str) -> str:
-    return f"{base_url}/{data_subject}/{source_config.name}"
+def build_bucket_url(base_url: str, layer_subject_source: str) -> str:
+    return f"{base_url}/{layer_subject_source}"
 
 
-def build_pipeline(source_config: SourceConfig, bucket_url: str, data_subject: str) -> dlt.Pipeline:
+def build_pipeline(source_config: SourceConfig, bucket_url: str, layer_subject_source: str) -> dlt.Pipeline:
     dest = filesystem(
-        bucket_url=build_bucket_url(bucket_url, source_config, data_subject),
+        bucket_url=build_bucket_url(bucket_url, layer_subject_source),
         layout=build_layout(),
     )
 
     return dlt.pipeline(
-        pipeline_name=f"bronze_{source_config.name}_{data_subject}",
+        pipeline_name=f"bronze_{layer_subject_source}",
         destination=dest,
         dataset_name=source_config.schema,
     )
@@ -60,7 +60,7 @@ def rotate_todays_parquet(bucket_url: str, source_config: SourceConfig) -> None:
     today = datetime.date.today().strftime("%d-%m-%Y")
 
     for table_config in source_config.tables:
-        base = Path(build_bucket_url(bucket_url, source_config, table_config.data_subject))
+        base = Path(build_bucket_url(bucket_url, table_config.layer_subject_source))
         parquet_file = base / source_config.schema / table_config.name / f"{today}.parquet"
         if parquet_file.exists():
             suffix = 1
@@ -73,12 +73,12 @@ def rotate_todays_parquet(bucket_url: str, source_config: SourceConfig) -> None:
                 suffix += 1
 
 
-def _group_tables_by_data_subject(source_config: SourceConfig) -> dict[str, list]:
+def _group_tables_by_layer_subject_source(source_config: SourceConfig) -> dict[str, list]:
     from collections import defaultdict
 
     groups = defaultdict(list)
     for table_config in source_config.tables:
-        groups[table_config.data_subject].append(table_config)
+        groups[table_config.layer_subject_source].append(table_config)
     return dict(groups)
 
 
@@ -102,16 +102,16 @@ def run_source_ingestion(
 ) -> None:
     results: list[tuple] = []
 
-    groups = _group_tables_by_data_subject(source_config)
+    groups = _group_tables_by_layer_subject_source(source_config)
 
-    for data_subject, table_configs in groups.items():
-        pipeline = build_pipeline(source_config, bucket_url, data_subject)
+    for layer_subject_source, table_configs in groups.items():
+        pipeline = build_pipeline(source_config, bucket_url, layer_subject_source)
         first_run = _is_first_run(pipeline)
 
         if first_run:
-            print(f"[{source_config.name}/{data_subject}] First run detected — performing full load")
+            print(f"[{source_config.name}/{layer_subject_source}] First run detected — performing full load")
         else:
-            print(f"[{source_config.name}/{data_subject}] Subsequent run — using configured load strategies")
+            print(f"[{source_config.name}/{layer_subject_source}] Subsequent run — using configured load strategies")
 
         table_names = [t.name for t in table_configs]
         source = sql_database(
@@ -137,13 +137,13 @@ def run_source_ingestion(
 
         try:
             load_info = pipeline.run(source, write_disposition="append", loader_file_format="parquet")
-            print(f"[{source_config.name}/{data_subject}] Load complete: {load_info}")
+            print(f"[{source_config.name}/{layer_subject_source}] Load complete: {load_info}")
             for table_config in table_configs:
-                results.append((table_config.name, data_subject, "loaded", ""))
+                results.append((table_config.name, table_config.data_subject, "loaded", ""))
         except Exception as e:
-            print(f"[{source_config.name}/{data_subject}] Load FAILED: {e}")
+            print(f"[{source_config.name}/{layer_subject_source}] Load FAILED: {e}")
             for table_config in table_configs:
-                results.append((table_config.name, data_subject, "failed", str(e)))
+                results.append((table_config.name, table_config.data_subject, "failed", str(e)))
 
     _print_bronze_summary(source_config.name, results)
 

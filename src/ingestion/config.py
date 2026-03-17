@@ -11,6 +11,7 @@ class TableConfig:
     name: str
     load_strategy: str  # "full", "incremental", or "append"
     data_subject: str = ""
+    layer_subject_source: str = ""
     cursor_column: Optional[str] = None
     initial_value: Optional[str] = None
     primary_key: Optional[list[str]] = None
@@ -26,6 +27,7 @@ class SourceConfig:
 @dataclass
 class CsvTableConfig:
     id: int
+    layer_subject_source: str
     table_name: str
     table_schema_stg: str
     source_name: str
@@ -49,6 +51,7 @@ def load_csv_config(csv_path: Path) -> list[CsvTableConfig]:
         for row in csv.DictReader(f):
             configs.append(CsvTableConfig(
                 id=int(row["id"]),
+                layer_subject_source=row["layer_subject_source"],
                 table_name=row["table_name"],
                 table_schema_stg=row["table_schema_stg"],
                 source_name=row["source_name"],
@@ -59,7 +62,7 @@ def load_csv_config(csv_path: Path) -> list[CsvTableConfig]:
                 initial_value=row.get("initial_value", ""),
                 primary_key=row.get("primary_key", ""),
                 load_sequence=int(row.get("load_sequence", 0)),
-                table_load_active=row.get("table_load_active", "TRUE").upper() == "TRUE",
+                table_load_active=row.get("table_load_active", "1").upper() in ("TRUE", "1"),
             ))
     return configs
 
@@ -93,6 +96,7 @@ def csv_to_source_configs(configs: list[CsvTableConfig]) -> list[SourceConfig]:
             name=c.table_name,
             load_strategy=c.load_strategy,
             data_subject=c.data_subject,
+            layer_subject_source=c.layer_subject_source,
             cursor_column=c.cursor_column or None,
             initial_value=c.initial_value or None,
             primary_key=[c.primary_key] if c.primary_key else None,

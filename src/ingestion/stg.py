@@ -10,39 +10,53 @@ from src.ingestion.config import SourceConfig, TableConfig
 
 def get_parquet_dir(
     bronze_base_url: str,
-    data_subject: str,
-    source_name: str,
+    layer_subject_source: str,
     schema: str,
     table_name: str,
 ) -> str:
-    return f"{bronze_base_url}/{data_subject}/{source_name}/{schema}/{table_name}"
+    # Biến đổi brz2stg_... thành src2brz_... để trỏ đúng vào thư mục nguồn
+    src_folder = layer_subject_source.replace("brz2stg", "src2brz")
+    path = f"{bronze_base_url}/{src_folder}/{schema}/{table_name}"
+    print(f"[get_parquet_dir] Constructed path: {path}")
+    return path
 
 
 def get_latest_parquet_file(parquet_dir: str) -> Path | None:
-    """Return the most recent parquet file in the directory, or None."""
+    """Return the most recent parquet file in the directory based on modification time, or None."""
+    print(f"[get_latest_parquet_file] Checking for directory: {parquet_dir}")
     base = Path(parquet_dir)
     if not base.exists():
+        print(f"[get_latest_parquet_file] Directory DOES NOT EXIST: {parquet_dir}")
         return None
-    files = sorted(base.glob("*.parquet"), reverse=True)
-    return files[0] if files else None
+    print(f"[get_latest_parquet_file] Directory exists. Searching for parquet files...")
+    
+    files = list(base.glob("*.parquet"))
+    if not files:
+        print(f"[get_latest_parquet_file] No parquet files found in {parquet_dir}")
+        return None
+    
+    # Sắp xếp file theo Modified Time giảm dần (file mới nhất theo giờ/phút/giây được đưa lên đầu)
+    files.sort(key=lambda f: f.stat().st_mtime, reverse=True)
+    latest = files[0]
+    print(f"[get_latest_parquet_file] Found latest file: {latest}")
+    return latest
 
 
 def build_stg_pipeline(
-    source_name: str,
-    data_subject: str,
+    layer_subject_source: str,
     warehouse_credentials: str,
 ) -> dlt.Pipeline:
     dest = postgres(credentials=warehouse_credentials)
-    dataset = f"stg__{data_subject}__{source_name}"
+    dataset = f"stg_{layer_subject_source}"
 
     return dlt.pipeline(
-        pipeline_name=f"stg_{source_name}_{data_subject}",
+        pipeline_name=f"stg_{layer_subject_source}",
         destination=dest,
         dataset_name=dataset,
     )
 
 
-def _run_stg_load(pipeline, reader, table_name, source_name, data_subject, credentials):
+def _run_stg_load(pipeline, reader, table_name, layer_subject_source, credentials):
     """Run a stg load, resetting pipeline state on schema mismatch."""
     try:
         return pipeline.run(
@@ -51,9 +65,9 @@ def _run_stg_load(pipeline, reader, table_name, source_name, data_subject, crede
         )
     except Exception as e:
         if "does not exist" in str(e):
-            print(f"[stg__{data_subject}__{source_name}] Schema mismatch for {table_name} — resetting pipeline state and retrying")
+            print(f"[stg__{layer_subject_source}] Schema mismatch for {table_name} — resetting pipeline state and retrying")
             pipeline.drop()
-            pipeline = build_stg_pipeline(source_name, data_subject, credentials)
+            pipeline = build_stg_pipeline(layer_subject_source, credentials)
             return pipeline.run(
                 reader.with_name(table_name),
                 write_disposition="replace",
@@ -79,27 +93,26 @@ def _print_stg_summary(source_name: str, results: list[tuple]) -> None:
 def run_stg_subject(
     source_name: str,
     source_schema: str,
-    data_subject: str,
+    layer_subject_source: str,
     tables: list[TableConfig],
     bronze_base_url: str,
     warehouse_credentials: str,
 ) -> list[tuple]:
-    """Load latest parquet files for a data_subject into the warehouse.
+    """Load latest parquet files for a layer_subject_source into the warehouse.
 
     Returns list of (table_name, status, files_count, message) tuples.
     """
-    pipeline = build_stg_pipeline(source_name, data_subject, warehouse_credentials)
+    pipeline = build_stg_pipeline(layer_subject_source, warehouse_credentials)
 
     if pipeline.has_pending_data:
-        print(f"[stg__{data_subject}__{source_name}] Dropping pending packages for {pipeline.pipeline_name}")
+        print(f"[stg__{layer_subject_source}] Dropping pending packages for {pipeline.pipeline_name}")
         pipeline.drop_pending_packages()
 
     results: list[tuple] = []
     for table_config in tables:
         parquet_dir = get_parquet_dir(
             bronze_base_url=bronze_base_url,
-            data_subject=table_config.data_subject,
-            source_name=source_name,
+            layer_subject_source=layer_subject_source,
             schema=source_schema,
             table_name=table_config.name,
         )
@@ -107,7 +120,7 @@ def run_stg_subject(
         latest_file = get_latest_parquet_file(parquet_dir)
 
         if not latest_file:
-            print(f"[stg__{data_subject}__{source_name}] No parquet files for {table_config.name}, skipping")
+            print(f"[stg__{layer_subject_source}] No parquet files for {table_config.name}, skipping")
             results.append((table_config.name, "skipped", 0, "no parquet files"))
             continue
 
@@ -116,11 +129,11 @@ def run_stg_subject(
                 bucket_url=str(latest_file.parent),
                 file_glob=latest_file.name,
             ).read_parquet()
-            load_info = _run_stg_load(pipeline, reader, table_config.name, source_name, data_subject, warehouse_credentials)
-            print(f"[stg__{data_subject}__{source_name}] Loaded {latest_file.name} → {table_config.name}: {load_info}")
+            load_info = _run_stg_load(pipeline, reader, table_config.name, layer_subject_source, warehouse_credentials)
+            print(f"[stg__{layer_subject_source}] Loaded {latest_file.name} → {table_config.name}: {load_info}")
             results.append((table_config.name, "loaded", 1, ""))
         except Exception as e:
-            print(f"[stg__{data_subject}__{source_name}] FAILED loading {table_config.name}: {e}")
+            print(f"[stg__{layer_subject_source}] FAILED loading {table_config.name}: {e}")
             results.append((table_config.name, "failed", 0, str(e)))
 
     return results
@@ -133,16 +146,16 @@ def run_stg_ingestion(
 ) -> None:
     results: list[tuple] = []
 
-    # Group tables by data_subject so each group gets its own pipeline/schema
+    # Group tables by layer_subject_source so each group gets its own pipeline/schema
     subjects: dict[str, list] = {}
     for table_config in source_config.tables:
-        subjects.setdefault(table_config.data_subject, []).append(table_config)
+        subjects.setdefault(table_config.layer_subject_source, []).append(table_config)
 
-    for data_subject, tables in subjects.items():
+    for layer_subject_source, tables in subjects.items():
         subject_results = run_stg_subject(
             source_name=source_config.name,
             source_schema=source_config.schema,
-            data_subject=data_subject,
+            layer_subject_source=layer_subject_source,
             tables=tables,
             bronze_base_url=bronze_base_url,
             warehouse_credentials=warehouse_credentials,
