@@ -44,6 +44,7 @@ def build_pipeline(source_config: SourceConfig, bucket_url: str, data_subject: s
         pipeline_name=f"bronze_{source_config.name}_{data_subject}",
         destination=dest,
         dataset_name=source_config.schema,
+        naming="direct",
     )
 
 

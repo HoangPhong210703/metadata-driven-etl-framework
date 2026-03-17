@@ -7,6 +7,7 @@ from pathlib import Path
 
 from airflow import DAG  # type: ignore
 from airflow.operators.python import PythonOperator  # type: ignore
+from airflow.operators.trigger_dagrun import TriggerDagRunOperator  # type: ignore
 
 sys.path.insert(0, "/opt/airflow")
 from src.ingestion.audit import audited
@@ -99,6 +100,7 @@ with DAG(
     schedule=None,
     start_date=datetime(2024, 1, 1),
     catchup=False,
+    render_template_as_native_obj=True,
     tags=["ingestion", "rdbms2parquet"],
 ) as dag:
     connect = PythonOperator(
@@ -116,4 +118,11 @@ with DAG(
         python_callable=write_parquet,
     )
 
-    connect >> fetch >> write  # type: ignore
+    trigger_brz2stg = TriggerDagRunOperator(
+        task_id="trigger_brz2stg",
+        trigger_dag_id="coordinator",
+        conf={"button": "brz2stg__{{ dag_run.conf['data_subject'] }}__{{ dag_run.conf['source'] }}"},
+        wait_for_completion=False,
+    )
+
+    connect >> fetch >> write >> trigger_brz2stg  # type: ignore

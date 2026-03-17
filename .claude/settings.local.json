@@ -11,7 +11,8 @@
       "Bash(docker compose exec airflow-scheduler airflow dags trigger bronze_ingestion)",
       "Bash(docker compose exec airflow-scheduler airflow dags list-runs -d bronze_ingestion)",
       "Bash(docker compose down)",
-      "Bash(docker compose up -d)"
+      "Bash(docker compose up -d)",
+      "Bash(MSYS_NO_PATHCONV=1 docker exec etl-pipeline-file-partition-demo-airflow-scheduler-1 find /opt/airflow/data/bronze -name \"*.parquet\" 2>/dev/null | head -20)"
     ],
     "additionalDirectories": [
       "c:\\Users\\Admin\\Code\\Github\\etl-pipeline-file-partition-demo\\docs"
