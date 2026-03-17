@@ -6,7 +6,11 @@ from airflow.operators.python import PythonOperator  # type: ignore
 from airflow.operators.trigger_dagrun import TriggerDagRunOperator  # type: ignore
 from airflow.exceptions import AirflowSkipException  # type: ignore
 
+sys.path.insert(0, "/opt/airflow")
+from src.ingestion.audit import audited
 
+
+@audited
 def coor(**kwargs):
     dag_run = kwargs["dag_run"]
 
@@ -24,6 +28,7 @@ def coor(**kwargs):
     print(f"[coordinator] Parsed button '{button}' -> layer={layer}, data_subject={data_subject}, source={source}")
 
     return {
+        "button": button,
         "layer": layer,
         "data_subject": data_subject,
         "source": source,

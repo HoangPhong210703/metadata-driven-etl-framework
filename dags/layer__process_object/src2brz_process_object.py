@@ -9,8 +9,10 @@ from airflow.operators.python import PythonOperator  # type: ignore
 from airflow.operators.trigger_dagrun import TriggerDagRunOperator  # type: ignore
 
 sys.path.insert(0, "/opt/airflow")
+from src.ingestion.audit import audited
 
 
+@audited
 def process_object(**kwargs):
     """Sort tables by load_sequence and prepare payload for ingestion."""
     dag_run = kwargs["dag_run"]

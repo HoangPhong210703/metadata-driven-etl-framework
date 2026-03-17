@@ -59,7 +59,7 @@ def load_csv_config(csv_path: Path) -> list[CsvTableConfig]:
                 initial_value=row.get("initial_value", ""),
                 primary_key=row.get("primary_key", ""),
                 load_sequence=int(row.get("load_sequence", 0)),
-                table_load_active=row.get("table_load_active", "TRUE").upper() == "TRUE",
+                table_load_active=row.get("table_load_active", "1").strip() in ("1", "TRUE", "true", "True"),
             ))
     return configs
 
