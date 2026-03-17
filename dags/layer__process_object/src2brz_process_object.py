@@ -34,6 +34,7 @@ def sequence_loads(**kwargs):
     ti = kwargs["ti"]
     conf = ti.xcom_pull(task_ids="read_config")
     tables = conf.get("tables", [])
+    source_filter = conf.get("source")  # Optional source filter
 
     # Tables are already sorted by load_sequence from get_config.
     # Group by (source_name, data_subject) for the ingestion DAG.
@@ -46,7 +47,12 @@ def sequence_loads(**kwargs):
         "layer": conf.get("layer", "src2brz"),
         "data_subjects": conf.get("data_subjects", []),
         "groups": {k: v for k, v in groups.items()},
+        "tables": tables,  # Pass full table metadata for use in ingestion DAG
     }
+    
+    # Pass source filter forward if provided
+    if source_filter:
+        sequenced["source"] = source_filter
 
     for key, group_tables in groups.items():
         table_names = [t["table_name"] for t in group_tables]

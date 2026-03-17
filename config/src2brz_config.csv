@@ -1,4 +1,4 @@
-id,layer_subject_source,table_name,table_schema_stg,source_name,source_schema,data_subject,load_strategy,cursor_column,initial_value,primary_key,load_sequence,table_load_active
+id,layer__data_subject__src,table_name,table_schema_stg,source_name,source_schema,data_subject,load_strategy,cursor_column,initial_value,primary_key,load_sequence,table_load_active
 1,src2brz_accounting_crm,account_account,stg__postgres_crm__accounting,postgres_crm,public,accounting,incremental,write_date,1/1/2024,id,10,1
 2,src2brz_accounting_crm,account_account_account_tag,stg__postgres_crm__accounting,postgres_crm,public,accounting,full,write_date,1/1/2024,id,10,1
 3,src2brz_accounting_crm,account_account_tag,stg__postgres_crm__accounting,postgres_crm,public,accounting,incremental,write_date,1/1/2024,id,10,1
