@@ -156,13 +156,14 @@ def run_data_subject_ingestion(
 ) -> None:
     """Ingest all tables for a single data_subject."""
     table_configs = [t for t in source_config.tables if t.data_subject == data_subject]
-    pipeline = build_pipeline(source_config, bucket_url, data_subject)
+    layer_subject_source = table_configs[0].layer_subject_source if table_configs else data_subject
+    pipeline = build_pipeline(source_config, bucket_url, layer_subject_source)
     first_run = _is_first_run(pipeline)
 
     if first_run:
-        print(f"[{source_config.name}/{data_subject}] First run detected — performing full load")
+        print(f"[{source_config.name}/{layer_subject_source}] First run detected — performing full load")
     else:
-        print(f"[{source_config.name}/{data_subject}] Subsequent run — using configured load strategies")
+        print(f"[{source_config.name}/{layer_subject_source}] Subsequent run — using configured load strategies")
 
     table_names = [t.name for t in table_configs]
     source = sql_database(
@@ -187,7 +188,7 @@ def run_data_subject_ingestion(
                 )
 
     load_info = pipeline.run(source, write_disposition="append", loader_file_format="parquet")
-    print(f"[{source_config.name}/{data_subject}] Load complete: {load_info}")
+    print(f"[{source_config.name}/{layer_subject_source}] Load complete: {load_info}")
 
 
 def extract_tables(
@@ -198,13 +199,14 @@ def extract_tables(
 ) -> None:
     """Fetch data from RDBMS and normalize (extract + normalize step of dlt)."""
     table_configs = [t for t in source_config.tables if t.data_subject == data_subject]
-    pipeline = build_pipeline(source_config, bucket_url, data_subject)
+    layer_subject_source = table_configs[0].layer_subject_source if table_configs else data_subject
+    pipeline = build_pipeline(source_config, bucket_url, layer_subject_source)
     first_run = _is_first_run(pipeline)
 
     if first_run:
-        print(f"[{source_config.name}/{data_subject}] First run — full load")
+        print(f"[{source_config.name}/{layer_subject_source}] First run — full load")
     else:
-        print(f"[{source_config.name}/{data_subject}] Subsequent run — configured strategies")
+        print(f"[{source_config.name}/{layer_subject_source}] Subsequent run — configured strategies")
 
     table_names = [t.name for t in table_configs]
     source = sql_database(
@@ -230,7 +232,7 @@ def extract_tables(
 
     pipeline.extract(source, write_disposition="append", loader_file_format="parquet")
     pipeline.normalize()
-    print(f"[{source_config.name}/{data_subject}] Extract + normalize complete")
+    print(f"[{source_config.name}/{layer_subject_source}] Extract + normalize complete")
 
 
 def load_to_parquet(
@@ -239,9 +241,11 @@ def load_to_parquet(
     data_subject: str,
 ) -> None:
     """Write normalized data to parquet files (load step of dlt)."""
-    pipeline = build_pipeline(source_config, bucket_url, data_subject)
+    table_configs = [t for t in source_config.tables if t.data_subject == data_subject]
+    layer_subject_source = table_configs[0].layer_subject_source if table_configs else data_subject
+    pipeline = build_pipeline(source_config, bucket_url, layer_subject_source)
     load_info = pipeline.load()
-    print(f"[{source_config.name}/{data_subject}] Write parquet complete: {load_info}")
+    print(f"[{source_config.name}/{layer_subject_source}] Write parquet complete: {load_info}")
 
 
 def run_all_sources(config_path: Path, bucket_url: str, secrets: dict[str, str]) -> None:
