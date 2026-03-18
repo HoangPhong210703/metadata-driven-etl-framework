@@ -1,0 +1,4 @@
+source_layer,target_layer,data_subject,source,auto_trigger,active
+src2brz,brz2stg,accounting,postgres_crm,1,1
+src2brz,brz2stg,accounting,postgres_timesheet,1,1
+src2brz,brz2stg,project,maria_erp,1,1

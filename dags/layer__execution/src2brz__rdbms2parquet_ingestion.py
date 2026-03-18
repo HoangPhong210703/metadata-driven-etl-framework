@@ -94,6 +94,29 @@ def write_parquet(**kwargs):
     print(f"[ingestion] Wrote parquet for {source}__{data_subject}")
 
 
+@audited
+def trigger_next_layer(**kwargs):
+    """Check layer_management_config.csv and trigger next layer if auto_trigger=1."""
+    from airflow.api.common.trigger_dag import trigger_dag #type: ignore
+    from src.ingestion.layer_management import get_next_layer
+
+    conf = kwargs["dag_run"].conf or {}
+    current_layer = conf.get("layer", "src2brz")
+    data_subject = conf["data_subject"]
+    source = conf["source"]
+
+    button = get_next_layer(current_layer, data_subject, source)
+    if button:
+        print(f"[trigger_next_layer] Auto-triggering: {button}")
+        trigger_dag(
+            dag_id="coordinator",
+            conf={"button": button},
+            replace_microseconds=False,
+        )
+    else:
+        print(f"[trigger_next_layer] No auto-trigger for {current_layer} -> {data_subject}/{source}")
+
+
 with DAG(
     dag_id="src2brz_rdbms2parquet_ingestion",
     description="RDBMS to parquet for a single (data_subject, source)",
@@ -118,11 +141,9 @@ with DAG(
         python_callable=write_parquet,
     )
 
-    trigger_brz2stg = TriggerDagRunOperator(
-        task_id="trigger_brz2stg",
-        trigger_dag_id="coordinator",
-        conf={"button": "brz2stg__{{ dag_run.conf['data_subject'] }}__{{ dag_run.conf['source'] }}"},
-        wait_for_completion=False,
+    next_layer = PythonOperator(
+        task_id="trigger_next_layer",
+        python_callable=trigger_next_layer,
     )
 
-    connect >> fetch >> write >> trigger_brz2stg  # type: ignore
+    connect >> fetch >> write >> next_layer  # type: ignore
