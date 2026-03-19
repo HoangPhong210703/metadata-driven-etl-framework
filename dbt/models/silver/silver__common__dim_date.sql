@@ -1,4 +1,4 @@
-{{ config(materialized='table', schema='silver') }}
+{{ config(materialized='table', schema='sil__common') }}
 
 with date_spine as (
     select generate_series(

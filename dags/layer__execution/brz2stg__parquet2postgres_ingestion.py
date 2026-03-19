@@ -7,6 +7,7 @@ from pathlib import Path
 
 from airflow import DAG  # type: ignore
 from airflow.operators.python import PythonOperator  # type: ignore
+from airflow.operators.trigger_dagrun import TriggerDagRunOperator  # type: ignore
 
 sys.path.insert(0, "/opt/airflow")
 from src.ingestion.audit import audited
@@ -103,6 +104,7 @@ with DAG(
     schedule=None,
     start_date=datetime(2024, 1, 1),
     catchup=False,
+    render_template_as_native_obj=True,
     tags=["ingestion", "brz2stg", "parquet2postgres"],
 ) as dag:
     verify = PythonOperator(
@@ -115,4 +117,10 @@ with DAG(
         python_callable=load_to_warehouse,
     )
 
-    verify >> load  # type: ignore
+    trigger_stg2sil = TriggerDagRunOperator(
+        task_id="trigger_stg2sil",
+        trigger_dag_id="stg2sil__process_whdata",
+        conf="{{ dag_run.conf }}",
+    )
+
+    verify >> load >> trigger_stg2sil  # type: ignore

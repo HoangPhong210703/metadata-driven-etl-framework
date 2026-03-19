@@ -2,6 +2,6 @@ id,layer__data_subject__src,schedule_interval,start_date,max_active_runs,catchup
 1,src2brz__project__maria_erp,None,2024-01-01,1,False,0,5,coordinator,"button,src2brz,project,maria_erp",Button: trigger source-to-bronze for project from maria_erp,1
 2,src2brz__accounting__postgres_timesheet,None,2024-01-01,1,False,0,5,coordinator,"button,src2brz,accounting,postgres_timesheet",Button: trigger source-to-bronze for accounting from postgres_timesheet,1
 3,src2brz__accounting__postgres_crm,None,2024-01-01,1,False,0,5,coordinator,"button,src2brz,accounting,postgres_crm",Button: trigger source-to-bronze for accounting from postgres_crm,1
-4,brz2stg__project__maria_erp,None,2024-01-01,1,False,0,5,coordinator,"button,brz2stg,project,maria_erp",Button: trigger bronze-to-staging for project from maria_erp,1
-5,brz2stg__accounting__postgres_timesheet,None,2024-01-01,1,False,0,5,coordinator,"button,brz2stg,accounting,postgres_timesheet",Button: trigger bronze-to-staging for accounting from postgres_timesheet,1
-6,brz2stg__accounting__postgres_crm,None,2024-01-01,1,False,0,5,coordinator,"button,brz2stg,accounting,postgres_crm",Button: trigger bronze-to-staging for accounting from postgres_crm,1
+4,brz2sil__project__maria_erp,None,2024-01-01,1,False,0,5,coordinator,"button,brz2sil,project,maria_erp",Button: trigger bronze-to-silver for project from maria_erp,1
+5,brz2sil__accounting__postgres_timesheet,None,2024-01-01,1,False,0,5,coordinator,"button,brz2sil,accounting,postgres_timesheet",Button: trigger bronze-to-silver for accounting from postgres_timesheet,1
+6,brz2sil__accounting__postgres_crm,None,2024-01-01,1,False,0,5,coordinator,"button,brz2sil,accounting,postgres_crm",Button: trigger bronze-to-silver for accounting from postgres_crm,1

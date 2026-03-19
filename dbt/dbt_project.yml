@@ -14,8 +14,8 @@ models:
     stg:
       +schema: stg
     silver:
-      +schema: silver
+      +schema: sil
 
 snapshots:
   etl_warehouse:
-    +target_schema: silver
+    +target_schema: sil

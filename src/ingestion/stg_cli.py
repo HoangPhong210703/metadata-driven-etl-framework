@@ -38,11 +38,28 @@ def set_dbt_env_vars(credentials: str) -> None:
     os.environ["WAREHOUSE_DB"] = (parsed.path or "").lstrip("/")
 
 
-def run_dbt(dbt_project_dir: Path) -> None:
-    """Run dbt models for the stg layer."""
+def run_dbt(dbt_project_dir: Path, selectors: list[str] | None = None) -> None:
+    """Run dbt models. If selectors is None, runs stg and silver."""
+    if selectors is None:
+        selectors = ["stg", "silver"]
     profiles_dir = dbt_project_dir
+    for selector in selectors:
+        result = subprocess.run(
+            ["dbt", "run", "--select", selector, "--profiles-dir", str(profiles_dir)],
+            cwd=str(dbt_project_dir),
+            capture_output=True,
+            text=True,
+        )
+        print(result.stdout)
+        if result.returncode != 0:
+            print(result.stderr)
+            raise RuntimeError(f"dbt run --select {selector} failed with exit code {result.returncode}")
+
+
+def run_dbt_snapshot(dbt_project_dir: Path) -> None:
+    """Run dbt snapshots (SCD-2 tables)."""
     result = subprocess.run(
-        ["dbt", "run", "--select", "stg", "--profiles-dir", str(profiles_dir)],
+        ["dbt", "snapshot", "--profiles-dir", str(dbt_project_dir)],
         cwd=str(dbt_project_dir),
         capture_output=True,
         text=True,
@@ -50,7 +67,21 @@ def run_dbt(dbt_project_dir: Path) -> None:
     print(result.stdout)
     if result.returncode != 0:
         print(result.stderr)
-        raise RuntimeError(f"dbt run failed with exit code {result.returncode}")
+        raise RuntimeError(f"dbt snapshot failed with exit code {result.returncode}")
+
+
+def run_dbt_test(dbt_project_dir: Path) -> None:
+    """Run dbt tests. Logs warnings but does not raise on failure."""
+    result = subprocess.run(
+        ["dbt", "test", "--profiles-dir", str(dbt_project_dir)],
+        cwd=str(dbt_project_dir),
+        capture_output=True,
+        text=True,
+    )
+    print(result.stdout)
+    if result.returncode != 0:
+        print(f"[dbt_test] WARNING: dbt test returned exit code {result.returncode}")
+        print(result.stderr)
 
 
 def main():

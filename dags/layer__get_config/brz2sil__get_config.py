@@ -1,4 +1,4 @@
-"""Get config DAG (brz2stg) — reads CSV config for a specific (data_subject, source) pair
+"""Get config DAG (brz2sil) — reads CSV config for a specific (data_subject, source) pair
 and triggers processing."""
 
 import sys
@@ -13,7 +13,7 @@ sys.path.insert(0, "/opt/airflow")
 from src.ingestion.audit import audited
 
 CONFIG_FILES = {
-    "brz2stg": Path("/opt/airflow/config/brz2stg_config.csv"),
+    "brz2sil": Path("/opt/airflow/config/brz2sil_config.csv"),
 }
 
 
@@ -24,7 +24,7 @@ def get_config(**kwargs):
 
     dag_run = kwargs["dag_run"]
     conf = dag_run.conf or {}
-    layer = conf.get("layer", "brz2stg")
+    layer = conf.get("layer", "brz2sil")
     data_subject = conf.get("data_subject")
     source = conf.get("source")
 
@@ -34,6 +34,7 @@ def get_config(**kwargs):
 
     all_configs = load_csv_config(csv_path)
 
+    # Filter to this specific (data_subject, source) pair
     filtered = all_configs
     if data_subject:
         filtered = [c for c in filtered if c.data_subject == data_subject]
@@ -71,13 +72,13 @@ def get_config(**kwargs):
 
 
 with DAG(
-    dag_id="brz2stg_get_config",
-    description="Read config for a (data_subject, source) pair and trigger brz2stg processing",
+    dag_id="brz2sil_get_config",
+    description="Read config for a (data_subject, source) pair and trigger brz2sil processing",
     schedule=None,
     start_date=datetime(2024, 1, 1),
     catchup=False,
     render_template_as_native_obj=True,
-    tags=["orchestration", "brz2stg"],
+    tags=["orchestration", "brz2sil"],
 ) as dag:
     get_config_task = PythonOperator(
         task_id="get_config",
@@ -86,7 +87,7 @@ with DAG(
 
     processing_trigger = TriggerDagRunOperator(
         task_id="processing_trigger",
-        trigger_dag_id="brz2stg_processing",
+        trigger_dag_id="brz2sil__process_object",
         conf="{{ ti.xcom_pull(task_ids='get_config') }}",
     )
 

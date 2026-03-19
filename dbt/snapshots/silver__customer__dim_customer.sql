@@ -2,7 +2,7 @@
 
 {{
     config(
-        target_schema='silver',
+        target_schema='sil__accounting',
         unique_key='id',
         strategy='timestamp',
         updated_at='write_date',

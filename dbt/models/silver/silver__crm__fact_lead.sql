@@ -1,6 +1,6 @@
 {{ config(
     materialized='incremental',
-    schema='silver',
+    schema='sil__accounting',
     unique_key='lead_id'
 ) }}
 

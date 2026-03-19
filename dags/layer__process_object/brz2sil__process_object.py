@@ -1,5 +1,5 @@
-"""Process object DAG — receives config for a single (data_subject, source) pair,
-sorts tables by load_sequence, and triggers the ingestion DAG."""
+"""Process object DAG (brz2sil) — receives config for a single (data_subject, source) pair,
+filters active tables, sorts by load_sequence, and triggers the parquet-to-postgres ingestion DAG."""
 
 import sys
 from datetime import datetime
@@ -14,11 +14,11 @@ from src.ingestion.audit import audited
 
 @audited
 def process_object(**kwargs):
-    """Sort tables by load_sequence and prepare payload for ingestion."""
+    """Filter active tables, sort by load_sequence, and prepare payload for ingestion."""
     dag_run = kwargs["dag_run"]
     conf = dag_run.conf or {}
 
-    layer = conf.get("layer", "src2brz")
+    layer = conf.get("layer", "brz2sil")
     data_subject = conf.get("data_subject")
     source = conf.get("source")
     tables = conf.get("tables", [])
@@ -42,13 +42,13 @@ def process_object(**kwargs):
 
 
 with DAG(
-    dag_id="src2brz_processing",
-    description="Sort tables by load_sequence and trigger ingestion",
+    dag_id="brz2sil__process_object",
+    description="Filter active tables, sort by load_sequence, and trigger brz2stg ingestion",
     schedule=None,
     start_date=datetime(2024, 1, 1),
     catchup=False,
     render_template_as_native_obj=True,
-    tags=["orchestration"],
+    tags=["orchestration", "brz2sil"],
 ) as dag:
     process_object_task = PythonOperator(
         task_id="process_object",
@@ -57,7 +57,7 @@ with DAG(
 
     ingest_trigger = TriggerDagRunOperator(
         task_id="ingest_trigger",
-        trigger_dag_id="src2brz_rdbms2parquet_ingestion",
+        trigger_dag_id="brz2stg__parquet2postgres_ingestion",
         conf="{{ ti.xcom_pull(task_ids='process_object') }}",
     )
 
