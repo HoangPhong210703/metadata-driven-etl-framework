@@ -65,6 +65,12 @@ def audited(func):
         started_at = datetime.now(timezone.utc)
         try:
             result = func(**kwargs)
+
+            # Extract row_count from return value if available
+            row_count = None
+            if isinstance(result, dict):
+                row_count = result.get("row_count") or result.get("total")
+
             log_audit(
                 run_id=run_id,
                 dag_id=dag_id,
@@ -73,6 +79,7 @@ def audited(func):
                 layer=layer,
                 source=source,
                 data_subject=data_subject,
+                row_count=row_count,
                 started_at=started_at,
                 finished_at=datetime.now(timezone.utc),
             )

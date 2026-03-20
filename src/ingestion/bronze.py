@@ -9,6 +9,22 @@ from sqlalchemy import create_engine, text
 from src.ingestion.config import SourceConfig, load_source_configs
 
 
+def extract_row_counts(load_info) -> dict[str, int]:
+    """Extract per-table row counts from a dlt LoadInfo object."""
+    counts: dict[str, int] = {}
+    try:
+        for metrics_list in (load_info.metrics or {}).values():
+            for metric in metrics_list:
+                for table_name, table_metric in (metric.get("tables") or {}).items():
+                    if table_name.startswith("_dlt"):
+                        continue
+                    rows = table_metric.get("rows_count", 0)
+                    counts[table_name] = counts.get(table_name, 0) + rows
+    except Exception:
+        pass
+    return counts
+
+
 def _parse_date(value: str) -> datetime.datetime:
     """Parse a date string in ISO format (2024-01-01) or US format (1/1/2024)."""
     try:
@@ -237,11 +253,18 @@ def load_to_parquet(
     source_config: SourceConfig,
     bucket_url: str,
     data_subject: str,
-) -> None:
-    """Write normalized data to parquet files (load step of dlt)."""
+) -> dict[str, int]:
+    """Write normalized data to parquet files (load step of dlt).
+
+    Returns dict of {table_name: row_count}.
+    """
     pipeline = build_pipeline(source_config, bucket_url, data_subject)
     load_info = pipeline.load()
+    counts = extract_row_counts(load_info)
     print(f"[{source_config.name}/{data_subject}] Write parquet complete: {load_info}")
+    if counts:
+        print(f"[{source_config.name}/{data_subject}] Row counts: {counts}")
+    return counts
 
 
 def run_all_sources(config_path: Path, bucket_url: str, secrets: dict[str, str]) -> None:

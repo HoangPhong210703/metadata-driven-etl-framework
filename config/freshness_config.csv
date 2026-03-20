@@ -1,0 +1,4 @@
+source_name,data_subject,max_stale_hours,active
+postgres_crm,accounting,24,1
+postgres_timesheet,accounting,24,1
+maria_erp,project,48,1

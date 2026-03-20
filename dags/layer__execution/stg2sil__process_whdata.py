@@ -11,6 +11,7 @@ from airflow.operators.python import PythonOperator  # type: ignore
 
 sys.path.insert(0, "/opt/airflow")
 from src.ingestion.audit import audited
+from src.ingestion.alert import notify_dag_status
 
 SECRETS_PATH = Path("/opt/airflow/.dlt/secrets.toml")
 DBT_PROJECT_DIR = Path("/opt/airflow/dbt")
@@ -79,11 +80,33 @@ def run_dbt_silver(**kwargs):
 
 @audited
 def test_dbt(**kwargs):
-    """Run dbt tests. Non-blocking — logs warnings on failure."""
-    from src.ingestion.stg_cli import run_dbt_test
+    """Run dbt tests and store results to meta.dbt_test_results."""
+    from src.ingestion.stg_cli import run_dbt_test, parse_dbt_results
+    from src.ingestion.audit.db_logger import log_dbt_results
+
     _setup_dbt_env()
     run_dbt_test(DBT_PROJECT_DIR)
-    print("[stg2sil] dbt tests complete")
+
+    results = parse_dbt_results(DBT_PROJECT_DIR)
+    run_id = kwargs["dag_run"].run_id if kwargs.get("dag_run") else "unknown"
+
+    try:
+        log_dbt_results(results, run_id)
+    except Exception as e:
+        print(f"[stg2sil] WARNING: Failed to log dbt results to DB: {e}")
+
+    passed = [r for r in results if r["status"] == "pass"]
+    failed = [r for r in results if r["status"] in ("fail", "error")]
+    warned = [r for r in results if r["status"] == "warn"]
+
+    print(f"[stg2sil] dbt tests: {len(passed)} passed, {len(failed)} failed, {len(warned)} warnings")
+
+    return {
+        "test_count": len(results),
+        "passed": len(passed),
+        "failed": len(failed),
+        "warnings": len(warned),
+    }
 
 
 with DAG(
@@ -122,4 +145,10 @@ with DAG(
         python_callable=write_dag_run_note,
     )
 
-    write_note >> dbt_stg >> dbt_snap >> dbt_silver >> dbt_test  # type: ignore
+    notify = PythonOperator(
+        task_id="notify_pipeline_status",
+        python_callable=notify_dag_status,
+        trigger_rule="all_done",
+    )
+
+    write_note >> dbt_stg >> dbt_snap >> dbt_silver >> dbt_test >> notify  # type: ignore

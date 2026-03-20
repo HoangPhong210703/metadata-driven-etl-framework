@@ -14,3 +14,4 @@ dbt/logs/
 .dlt/pipelines/
 .claude
 pseudocode.py
+.env

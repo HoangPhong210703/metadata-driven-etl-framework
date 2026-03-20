@@ -10,6 +10,12 @@ x-airflow-common: &airflow-common
     AIRFLOW__CORE__PARALLELISM: 4
     AIRFLOW__CORE__FERNET_KEY: ''
     AIRFLOW__WEBSERVER__SECRET_KEY: change-me-in-production
+    AIRFLOW__SMTP__SMTP_HOST: "${SMTP_HOST:-}"
+    AIRFLOW__SMTP__SMTP_PORT: "${SMTP_PORT:-587}"
+    AIRFLOW__SMTP__SMTP_USER: "${SMTP_USER:-}"
+    AIRFLOW__SMTP__SMTP_PASSWORD: "${SMTP_PASSWORD:-}"
+    AIRFLOW__SMTP__SMTP_MAIL_FROM: "${SMTP_MAIL_FROM:-noreply@example.com}"
+    AIRFLOW__SMTP__SMTP_STARTTLS: "True"
   volumes:
     - ./dags:/opt/airflow/dags
     - ./src:/opt/airflow/src

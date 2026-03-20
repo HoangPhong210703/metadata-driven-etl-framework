@@ -5,6 +5,7 @@ import dlt
 from dlt.destinations import postgres
 from dlt.sources.filesystem import readers
 
+from src.ingestion.bronze import extract_row_counts
 from src.ingestion.config import SourceConfig, TableConfig
 
 
@@ -65,11 +66,13 @@ def _print_stg_summary(source_name: str, results: list[tuple]) -> None:
     print(f"\n{'=' * 55}")
     print(f"  Stg Ingestion Summary — {source_name}")
     print(f"{'=' * 55}")
-    for table_name, status, files_count, message in results:
+    for table_name, status, files_count, message, row_count in results:
         icon = "OK" if status == "loaded" else ("FAIL" if status == "failed" else "SKIP")
         line = f"  [{icon}] {table_name:<30} "
         if status == "loaded":
             line += f"{files_count} file(s)"
+            if row_count:
+                line += f", {row_count} rows"
         elif message:
             line += message
         print(line)
@@ -86,7 +89,7 @@ def run_stg_subject(
 ) -> list[tuple]:
     """Load latest parquet files for a data_subject into the warehouse.
 
-    Returns list of (table_name, status, files_count, message) tuples.
+    Returns list of (table_name, status, files_count, message, row_count) tuples.
     """
     pipeline = build_stg_pipeline(source_name, data_subject, warehouse_credentials)
 
@@ -108,7 +111,7 @@ def run_stg_subject(
 
         if not latest_file:
             print(f"[stg__{data_subject}__{source_name}] No parquet files for {table_config.name}, skipping")
-            results.append((table_config.name, "skipped", 0, "no parquet files"))
+            results.append((table_config.name, "skipped", 0, "no parquet files", 0))
             continue
 
         try:
@@ -117,11 +120,13 @@ def run_stg_subject(
                 file_glob=latest_file.name,
             ).read_parquet()
             load_info = _run_stg_load(pipeline, reader, table_config.name, source_name, data_subject, warehouse_credentials)
-            print(f"[stg__{data_subject}__{source_name}] Loaded {latest_file.name} → {table_config.name}: {load_info}")
-            results.append((table_config.name, "loaded", 1, ""))
+            counts = extract_row_counts(load_info)
+            row_count = counts.get(table_config.name, 0)
+            print(f"[stg__{data_subject}__{source_name}] Loaded {latest_file.name} → {table_config.name}: {load_info} ({row_count} rows)")
+            results.append((table_config.name, "loaded", 1, "", row_count))
         except Exception as e:
             print(f"[stg__{data_subject}__{source_name}] FAILED loading {table_config.name}: {e}")
-            results.append((table_config.name, "failed", 0, str(e)))
+            results.append((table_config.name, "failed", 0, str(e), 0))
 
     return results
 

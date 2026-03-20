@@ -1,4 +1,5 @@
 import argparse
+import json
 import os
 import subprocess
 from pathlib import Path
@@ -82,6 +83,28 @@ def run_dbt_test(dbt_project_dir: Path) -> None:
     if result.returncode != 0:
         print(f"[dbt_test] WARNING: dbt test returned exit code {result.returncode}")
         print(result.stderr)
+
+
+def parse_dbt_results(dbt_project_dir: Path) -> list[dict]:
+    """Parse dbt target/run_results.json and return structured test results."""
+    results_path = dbt_project_dir / "target" / "run_results.json"
+    if not results_path.exists():
+        print(f"[dbt] No run_results.json found at {results_path}")
+        return []
+
+    with open(results_path) as f:
+        data = json.load(f)
+
+    return [
+        {
+            "test_name": r.get("unique_id", "unknown"),
+            "status": r.get("status", "unknown"),
+            "failures": r.get("failures", 0) or 0,
+            "execution_time": r.get("execution_time", 0) or 0,
+            "message": r.get("message"),
+        }
+        for r in data.get("results", [])
+    ]
 
 
 def main():

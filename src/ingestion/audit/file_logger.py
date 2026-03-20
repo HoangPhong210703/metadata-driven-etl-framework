@@ -45,11 +45,15 @@ def log_to_file(record: dict):
     component_dir.mkdir(parents=True, exist_ok=True)
     log_file = component_dir / f"{date_str}.log"
 
+    row_count = record.get("row_count")
+
     line = f"[{ts_str}] {status.upper()} {task_id}"
     if source:
         line += f" | source={source}"
     if data_subject:
         line += f" | subject={data_subject}"
+    if row_count is not None:
+        line += f" | rows={row_count}"
     line += duration
 
     if error_message and status == "failed":
@@ -61,3 +65,30 @@ def log_to_file(record: dict):
 
     with open(log_file, "a") as f:
         f.write(line + "\n")
+
+
+def log_freshness_to_file(results: list[dict]) -> None:
+    """Write freshness check results to logs/audit/data_freshness_check/{date}.log."""
+    if not results:
+        return
+
+    now = datetime.now(timezone.utc)
+    ts_str = now.strftime("%Y-%m-%d %H:%M:%S")
+    date_str = now.strftime("%Y-%m-%d")
+
+    component_dir = AUDIT_LOG_DIR / "data_freshness_check"
+    component_dir.mkdir(parents=True, exist_ok=True)
+    log_file = component_dir / f"{date_str}.log"
+
+    lines = [f"[{ts_str}] Freshness check — {len(results)} source(s)"]
+    for r in results:
+        hours = r.get("hours_since_load")
+        hours_str = f"{hours:.1f}h ago" if hours is not None else "never"
+        status_tag = "OK" if r["status"] == "fresh" else "STALE"
+        lines.append(
+            f"  [{status_tag}] {r['source_name']}/{r['data_subject']}: "
+            f"{hours_str} (threshold: {r['max_stale_hours']}h)"
+        )
+
+    with open(log_file, "a") as f:
+        f.write("\n".join(lines) + "\n")

@@ -1,0 +1,4 @@
+alert_type,recipients,active
+pipeline_failure,hoangphong210703@gmail.com,1
+pipeline_success,hoangphong210703@gmail.com,1
+data_freshness,hoangphong210703@gmail.com,1

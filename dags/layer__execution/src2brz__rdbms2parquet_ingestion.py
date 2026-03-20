@@ -11,6 +11,7 @@ from airflow.operators.trigger_dagrun import TriggerDagRunOperator  # type: igno
 
 sys.path.insert(0, "/opt/airflow")
 from src.ingestion.audit import audited
+from src.ingestion.alert import notify_dag_status
 
 SECRETS_PATH = Path("/opt/airflow/.dlt/secrets.toml")
 BUCKET_URL = "/opt/airflow/data/bronze"
@@ -85,12 +86,14 @@ def write_parquet(**kwargs):
     tables = conf.get("tables", [])
     source_schema = tables[0]["source_schema"] if tables else "public"
 
-    load_to_parquet(
+    row_counts = load_to_parquet(
         SourceConfig(name=source, schema=source_schema, tables=[]),
         BUCKET_URL,
         data_subject,
     )
-    print(f"[ingestion] Wrote parquet for {source}__{data_subject}")
+    total = sum(row_counts.values()) if row_counts else 0
+    print(f"[ingestion] Wrote parquet for {source}__{data_subject} ({total} total rows)")
+    return {"row_count": total, "row_counts": row_counts}
 
 
 @audited
@@ -145,4 +148,10 @@ with DAG(
         python_callable=trigger_next_layer,
     )
 
-    connect >> fetch >> write >> next_layer  # type: ignore
+    notify = PythonOperator(
+        task_id="notify_pipeline_status",
+        python_callable=notify_dag_status,
+        trigger_rule="all_done",
+    )
+
+    connect >> fetch >> write >> next_layer >> notify  # type: ignore

@@ -15,6 +15,7 @@ from airflow.operators.python import PythonOperator  # type: ignore
 
 sys.path.insert(0, "/opt/airflow")
 from src.ingestion.audit import audited
+from src.ingestion.alert import notify_dag_status
 
 SECRETS_PATH = Path("/opt/airflow/.dlt/secrets.toml")
 BRONZE_BASE_URL = "/opt/airflow/data/bronze"
@@ -107,6 +108,9 @@ def load_to_warehouse(**kwargs):
     kwargs["outlet_events"][stg_alias].add(stg_dataset)
     print(f"[brz2stg] Emitted dataset event: stg__{data_subject}__{source}")
 
+    total = sum(r[4] for r in results)
+    return {"row_count": total}
+
 
 with DAG(
     dag_id="brz2stg_parquet2postgres_ingestion",
@@ -128,4 +132,10 @@ with DAG(
         outlets=[DatasetAlias("brz2stg-output")],
     )
 
-    verify >> load  # type: ignore
+    notify = PythonOperator(
+        task_id="notify_pipeline_status",
+        python_callable=notify_dag_status,
+        trigger_rule="all_done",
+    )
+
+    verify >> load >> notify  # type: ignore
