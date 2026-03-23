@@ -41,7 +41,11 @@ def rdbms_src_connect(**kwargs):
 
 @audited
 def fetch_tables(**kwargs):
-    """Extract data from RDBMS and normalize."""
+    """Extract data from RDBMS and normalize.
+    
+    Extracts all tables with per-table retry (3 attempts each).
+    If ANY table fails after all retries, the entire task fails.
+    """
     from src.ingestion.bronze import extract_tables
     from src.ingestion.config import csv_to_source_configs, CsvTableConfig
 
@@ -70,13 +74,19 @@ def fetch_tables(**kwargs):
 
     source_config = csv_to_source_configs(table_configs)[0]
     credentials = _load_credentials(source)
+    
+    # Extract tables — will raise exception if ANY table fails after 3 retries
+    # If this completes successfully, all tables succeeded
     extract_tables(source_config, BUCKET_URL, credentials, data_subject)
-    print(f"[ingestion] Extracted {len(tables)} tables for {source}__{data_subject}")
+    print(f"[ingestion] All tables successfully extracted for {source}__{data_subject}")
 
 
 @audited
 def write_parquet(**kwargs):
-    """Write normalized data to parquet files."""
+    """Write normalized data to parquet files.
+    
+    Only runs if ALL tables were successfully extracted (otherwise fetch_tables fails).
+    """
     from src.ingestion.bronze import load_to_parquet
     from src.ingestion.config import SourceConfig
 
