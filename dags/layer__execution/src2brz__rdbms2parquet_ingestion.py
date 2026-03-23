@@ -109,10 +109,9 @@ def trigger_next_layer(**kwargs):
 
     button = get_next_layer(current_layer, data_subject, source)
     if button:
-        print(f"[trigger_next_layer] Auto-triggering: {button}")
+        print(f"[trigger_next_layer] Auto-triggering button: {button}")
         trigger_dag(
-            dag_id="coordinator",
-            conf={"button": button},
+            dag_id=button,
             replace_microseconds=False,
         )
     else:
