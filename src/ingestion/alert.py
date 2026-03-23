@@ -5,6 +5,12 @@ import os
 import traceback
 from pathlib import Path
 
+import keyring
+import yagmail
+from keyring.backends import null
+
+keyring.set_keyring(null.Keyring())
+
 ALERT_CONFIG_PATH = Path("/opt/airflow/config/alert_config.csv")
 
 
@@ -27,7 +33,6 @@ def send_alert(alert_type: str, subject: str, body: str) -> None:
     Falls back to logging if SENDER_EMAIL/PASSWORD are not configured.
     """
     recipients = _get_recipients(alert_type)
-    print(f"[alert] Found {len(recipients)} recipients for alert_type='{alert_type}': {recipients}")
     if not recipients:
         print(f"[alert] No active recipients for alert_type='{alert_type}', skipping")
         return
@@ -36,28 +41,19 @@ def send_alert(alert_type: str, subject: str, body: str) -> None:
     sender_password = os.environ.get("SENDER_PASSWORD")
 
     if not sender_email or not sender_password:
-        print(f"[alert] SENDER_EMAIL or SENDER_PASSWORD not found in .env — would send '{subject}' to {recipients}")
-        print(f"[alert] Body: {body}")
+        print(f"[alert] SENDER_EMAIL or SENDER_PASSWORD not configured — skipping email for '{subject}'")
         return
 
     try:
-        import yagmail
-        import keyring
-        from keyring.backends import null
-        keyring.set_keyring(null.Keyring())
-        print(f"[alert] Initializing SMTP with user '{sender_email}'...")
         yag = yagmail.SMTP(sender_email, sender_password)
-        print(f"[alert] Sending '{subject}' to {recipients}...")
         yag.send(
             to=recipients,
             subject=f"[ETL Pipeline] {subject}",
             contents=f"<pre>{body}</pre>",
         )
-        print(f"[alert] Successfully sent email to {recipients}")
-    except Exception as e:
-        print(f"[alert] ERROR: Failed to send email. See traceback below.")
-        print(f"[alert] Subject: {subject}")
-        # Print the full traceback
+        print(f"[alert] Sent '{subject}' to {recipients}")
+    except Exception:
+        print(f"[alert] ERROR: Failed to send email '{subject}' to {recipients}")
         traceback.print_exc()
 
 
