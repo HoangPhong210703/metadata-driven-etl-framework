@@ -1,0 +1,4 @@
+source_name,data_subject,source_schema,retention_days,active
+postgres_crm,accounting,public,365,1
+postgres_timesheet,accounting,public,365,1
+maria_erp,project,appdb,365,1
