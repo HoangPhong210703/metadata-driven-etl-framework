@@ -5,6 +5,7 @@ x-airflow-common: &airflow-common
   env_file: .env
   environment:
     AIRFLOW__SCHEDULER__DAG_DIR_LIST_INTERVAL: '30'
+    AIRFLOW__SCHEDULER__ALLOW_TRIGGER_IN_FUTURE: 'True'
     AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-db:5432/airflow
     AIRFLOW__CORE__EXECUTOR: LocalExecutor
     AIRFLOW__CORE__PARALLELISM: 4
