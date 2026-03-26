@@ -10,7 +10,7 @@ from airflow import DAG  # type: ignore
 from airflow.operators.python import PythonOperator  # type: ignore
 
 sys.path.insert(0, "/opt/airflow")
-from src.ingestion.audit import audited
+from src.utils.audit import audited
 
 SECRETS_PATH = Path("/opt/airflow/.dlt/secrets.toml")
 FRESHNESS_CONFIG_PATH = Path("/opt/airflow/config/freshness_config.csv")
@@ -27,9 +27,9 @@ def _load_warehouse_credentials() -> str:
 def check_freshness(**kwargs):
     """Query meta.pipeline_audit for last successful run per source and alert on stale data."""
     from sqlalchemy import create_engine, text
-    from src.ingestion.alert import send_alert
-    from src.ingestion.audit.db_logger import log_freshness_results
-    from src.ingestion.audit.file_logger import log_freshness_to_file
+    from src.utils.alert import send_alert
+    from src.ultis.audit.audit.db_logger import log_freshness_results
+    from src.ultis.audit.audit.file_logger import log_freshness_to_file
 
     if not FRESHNESS_CONFIG_PATH.exists():
         print("[freshness] No freshness_config.csv found, skipping")

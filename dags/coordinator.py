@@ -7,7 +7,7 @@ from airflow.operators.trigger_dagrun import TriggerDagRunOperator  # type: igno
 from airflow.exceptions import AirflowSkipException  # type: ignore
 
 sys.path.insert(0, "/opt/airflow")
-from src.ingestion.audit import audited
+from src.utils.audit import audited
 
 
 @audited

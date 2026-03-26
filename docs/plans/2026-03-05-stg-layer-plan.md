@@ -233,8 +233,8 @@ Create `tests/ingestion/test_stg.py`:
 
 ```python
 import pytest
-from src.ingestion.config import SourceConfig, TableConfig
-from src.ingestion.stg import (
+from src.config.config import SourceConfig, TableConfig
+from src.layer.silver.stg import (
     get_parquet_glob,
     build_stg_pipeline,
 )
@@ -276,7 +276,7 @@ def test_build_stg_pipeline(source_config):
 **Step 2: Run tests to verify they fail**
 
 Run: `python -m pytest tests/ingestion/test_stg.py -v`
-Expected: FAIL — `ModuleNotFoundError: No module named 'src.ingestion.stg'`
+Expected: FAIL — `ModuleNotFoundError: No module named src.layer.silver.stg'`
 
 **Step 3: Implement stg.py**
 
@@ -289,7 +289,7 @@ import dlt
 from dlt.destinations import postgres
 from dlt.sources.filesystem import readers
 
-from src.ingestion.config import SourceConfig, load_sources_config
+from src.config.config import SourceConfig, load_sources_config
 
 
 def get_parquet_glob(
@@ -460,7 +460,7 @@ git commit -m "feat: add dbt stg models for project_task and account_account"
 Add to `tests/ingestion/test_stg.py`:
 
 ```python
-from src.ingestion.stg import build_cleanup_query
+from src.layer.silver.stg import build_cleanup_query
 
 
 def test_build_cleanup_query_single_table():
@@ -570,8 +570,8 @@ import subprocess
 from pathlib import Path
 from urllib.parse import urlparse
 
-from src.ingestion.config import load_sources_config
-from src.ingestion.stg import run_stg_ingestion, run_stg_cleanup
+from src.config.config import load_sources_config
+from src.layer.silver.stg import run_stg_ingestion, run_stg_cleanup
 
 
 def load_warehouse_credentials(secrets_path: Path) -> str:
@@ -693,7 +693,7 @@ if __name__ == "__main__":
 
 **Step 2: Verify it runs**
 
-Run: `python -m src.ingestion.stg_cli --help`
+Run: `python -m src.cli.stg_cli --help`
 Expected: Shows help text with `--config`, `--secrets`, `--bronze-url`, `--dbt-dir`, `--source`, `--retention-days`, `--skip-dbt` options
 
 **Step 3: Commit**
@@ -729,8 +729,8 @@ from airflow.sensors.external_task import ExternalTaskSensor
 
 sys.path.insert(0, "/opt/airflow")
 
-from src.ingestion.config import load_sources_config
-from src.ingestion.stg import run_stg_ingestion, run_stg_cleanup
+from src.config.config import load_sources_config
+from src.layer.silver.stg import run_stg_ingestion, run_stg_cleanup
 
 CONFIG_PATH = Path("/opt/airflow/config/sources.yaml")
 SECRETS_PATH = Path("/opt/airflow/.dlt/secrets.toml")

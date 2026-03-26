@@ -33,7 +33,7 @@ In `config/sources.yaml`, add under `postgres_crm.tables`:
 **Step 2: Verify config loads without error**
 
 ```bash
-python -c "from src.ingestion.config import load_sources_config; from pathlib import Path; s = load_sources_config(Path('config/sources.yaml')); print([t.name for src in s for t in src.tables])"
+python -c "from src.config.config import load_sources_config; from pathlib import Path; s = load_sources_config(Path('config/sources.yaml')); print([t.name for src in s for t in src.tables])"
 ```
 
 Expected output includes `res_partner`.

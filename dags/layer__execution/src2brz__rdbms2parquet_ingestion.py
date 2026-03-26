@@ -10,8 +10,8 @@ from airflow.operators.python import PythonOperator  # type: ignore
 from airflow.operators.trigger_dagrun import TriggerDagRunOperator  # type: ignore
 
 sys.path.insert(0, "/opt/airflow")
-from src.ingestion.audit import audited
-from src.ingestion.alert import dag_failure_callback, dag_success_callback
+from src.utils.audit import audited
+from src.utils.alert import dag_failure_callback, dag_success_callback
 
 SECRETS_PATH = Path("/opt/airflow/.dlt/secrets.toml")
 BUCKET_URL = "/opt/airflow/data/bronze"
@@ -27,7 +27,7 @@ def _load_credentials(source_name: str) -> str:
 @audited
 def rdbms_src_connect(**kwargs):
     """Check database connectivity for this source."""
-    from src.ingestion.bronze import test_source_connection
+    from src.layer.bronze.bronze import test_source_connection
 
     conf = kwargs["dag_run"].conf or {}
     source = conf["source"]
@@ -46,8 +46,8 @@ def fetch_tables(**kwargs):
     Extracts all tables with per-table retry (3 attempts each).
     If ANY table fails after all retries, the entire task fails.
     """
-    from src.ingestion.bronze import extract_tables
-    from src.ingestion.config import csv_to_source_configs, CsvTableConfig
+    from src.layer.bronze.bronze import extract_tables
+    from src.config.config import csv_to_source_configs, CsvTableConfig
 
     conf = kwargs["dag_run"].conf or {}
     source = conf["source"]
@@ -87,8 +87,8 @@ def write_parquet(**kwargs):
     
     Only runs if ALL tables were successfully extracted (otherwise fetch_tables fails).
     """
-    from src.ingestion.bronze import load_to_parquet
-    from src.ingestion.config import SourceConfig
+    from src.layer.bronze.bronze import load_to_parquet
+    from src.config.config import SourceConfig
 
     conf = kwargs["dag_run"].conf or {}
     source = conf["source"]
@@ -110,7 +110,7 @@ def write_parquet(**kwargs):
 def trigger_next_layer(**kwargs):
     """Check layer_management_config.csv and trigger next layer if auto_trigger=1."""
     from airflow.api.common.trigger_dag import trigger_dag #type: ignore
-    from src.ingestion.layer_management import get_next_layer
+    from src.config.layer_management import get_next_layer
 
     conf = kwargs["dag_run"].conf or {}
     current_layer = conf.get("layer", "src2brz")

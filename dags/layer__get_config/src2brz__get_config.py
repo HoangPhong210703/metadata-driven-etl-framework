@@ -10,7 +10,7 @@ from airflow.operators.python import PythonOperator  # type: ignore
 from airflow.operators.trigger_dagrun import TriggerDagRunOperator  # type: ignore
 
 sys.path.insert(0, "/opt/airflow")
-from src.ingestion.audit import audited
+from src.utils.audit import audited
 
 CONFIG_FILES = {
     "src2brz": Path("/opt/airflow/config/src2brz_config.csv"),
@@ -20,7 +20,7 @@ CONFIG_FILES = {
 @audited
 def get_config(**kwargs):
     """Read the layer config CSV, filter by the single data_subject + source from coordinator."""
-    from src.ingestion.config import load_csv_config
+    from src.config.config import load_csv_config
 
     dag_run = kwargs["dag_run"]
     conf = dag_run.conf or {}

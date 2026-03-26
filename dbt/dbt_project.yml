@@ -1,7 +1,8 @@
-name: etl_warehouse
+name: "etl_warehouse"
 version: "1.0.0"
+config-version: 2 
 
-profile: warehouse
+profile: "warehouse" 
 
 model-paths: ["models"]
 snapshot-paths: ["snapshots"]
@@ -10,10 +11,14 @@ target-path: "target"
 clean-targets: ["target", "dbt_packages"]
 
 models:
-  etl_warehouse:
+  etl_warehouse: 
+    staging:
+      +materialized: view
+      +schema: stg
     silver:
+      +materialized: table
       +schema: sil
 
 snapshots:
   etl_warehouse:
-    +target_schema: sil
+    +target_schema: snapshots 

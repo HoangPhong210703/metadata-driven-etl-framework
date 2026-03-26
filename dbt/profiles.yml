@@ -8,5 +8,5 @@ warehouse:
       user: "{{ env_var('WAREHOUSE_USER') }}"
       password: "{{ env_var('WAREHOUSE_PASSWORD') }}"
       dbname: "{{ env_var('WAREHOUSE_DB') }}"
-      schema: stg
+      schema: stg__accounting__postgres_crm
       threads: 4

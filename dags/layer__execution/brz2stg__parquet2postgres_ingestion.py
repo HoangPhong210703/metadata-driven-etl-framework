@@ -14,8 +14,8 @@ from airflow.datasets import Dataset, DatasetAlias  # type: ignore
 from airflow.operators.python import PythonOperator  # type: ignore
 
 sys.path.insert(0, "/opt/airflow")
-from src.ingestion.audit import audited
-from src.ingestion.alert import dag_failure_callback, dag_success_callback
+from src.utils.audit import audited
+from src.utils.alert import dag_failure_callback, dag_success_callback
 
 SECRETS_PATH = Path("/opt/airflow/.dlt/secrets.toml")
 BRONZE_BASE_URL = "/opt/airflow/data/bronze"
@@ -31,7 +31,7 @@ def _load_warehouse_credentials() -> str:
 @audited
 def verify_parquet(**kwargs):
     """Check that parquet files exist for the tables in this (data_subject, source) pair."""
-    from src.ingestion.stg import get_parquet_dir, get_latest_parquet_file
+    from src.layer.silver.stg import get_parquet_dir, get_latest_parquet_file
 
     conf = kwargs["dag_run"].conf or {}
     source = conf["source"]
@@ -64,8 +64,8 @@ def verify_parquet(**kwargs):
 @audited
 def load_to_warehouse(**kwargs):
     """Load latest parquet files into warehouse using stg.py."""
-    from src.ingestion.stg import run_stg_subject, _print_stg_summary
-    from src.ingestion.config import TableConfig
+    from src.layer.silver.stg import run_stg_subject, _print_stg_summary
+    from src.config.config import TableConfig
 
     conf = kwargs["dag_run"].conf or {}
     source = conf["source"]

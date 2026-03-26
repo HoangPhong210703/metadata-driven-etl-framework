@@ -144,7 +144,7 @@ Create `tests/ingestion/test_config.py`:
 ```python
 import pytest
 from pathlib import Path
-from src.ingestion.config import load_sources_config, SourceConfig, TableConfig
+from src.config.config import load_sources_config, SourceConfig, TableConfig
 
 
 @pytest.fixture
@@ -217,7 +217,7 @@ def test_load_config_missing_required_field(tmp_path):
 **Step 3: Run tests to verify they fail**
 
 Run: `python -m pytest tests/ingestion/test_config.py -v`
-Expected: FAIL — `ModuleNotFoundError: No module named 'src.ingestion.config'`
+Expected: FAIL — `ModuleNotFoundError: No module named 'src.config.config'`
 
 **Step 4: Implement the config loader**
 
@@ -321,8 +321,8 @@ Create `tests/ingestion/test_bronze.py`:
 ```python
 import pytest
 from unittest.mock import patch, MagicMock
-from src.ingestion.config import SourceConfig, TableConfig
-from src.ingestion.bronze import build_pipeline, build_layout, run_source_ingestion
+from src.config.config import SourceConfig, TableConfig
+from src.layer.bronze.bronze import build_pipeline, build_layout, run_source_ingestion
 
 
 @pytest.fixture
@@ -371,7 +371,7 @@ def test_build_pipeline_extra_placeholders(source_config):
 **Step 2: Run tests to verify they fail**
 
 Run: `python -m pytest tests/ingestion/test_bronze.py -v`
-Expected: FAIL — `ModuleNotFoundError: No module named 'src.ingestion.bronze'`
+Expected: FAIL — `ModuleNotFoundError: No module named 'src.layer.bronze.bronze'`
 
 **Step 3: Implement the pipeline builder**
 
@@ -385,7 +385,7 @@ import dlt
 from dlt.destinations import filesystem
 from dlt.sources.sql_database import sql_database
 
-from src.ingestion.config import SourceConfig, TableConfig, load_sources_config
+from src.config.config import SourceConfig, TableConfig, load_sources_config
 
 
 def build_layout() -> str:
@@ -480,8 +480,8 @@ from pathlib import Path
 
 import dlt.common.configuration.specs.config_providers as providers
 
-from src.ingestion.config import load_sources_config
-from src.ingestion.bronze import run_source_ingestion
+from src.config.config import load_sources_config
+from src.utils.bronze.bronze import run_source_ingestion
 
 
 def load_secrets(secrets_path: Path) -> dict[str, str]:
@@ -555,7 +555,7 @@ if __name__ == "__main__":
 
 **Step 2: Verify it runs (dry check — no real DBs needed)**
 
-Run: `python -m src.ingestion.cli --help`
+Run: `python -m src.cli.cli --help`
 Expected: Shows help text with `--config`, `--secrets`, `--bucket-url`, `--source` options
 
 **Step 3: Commit**

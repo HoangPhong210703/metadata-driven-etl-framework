@@ -1,4 +1,4 @@
-dlt[sql_database,filesystem,parquet]>=1.0.0
+sdlt[sql_database,filesystem,parquet]>=1.0.0
 numpy
 psycopg2-binary
 pymysql

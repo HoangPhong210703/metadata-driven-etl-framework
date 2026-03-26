@@ -10,8 +10,8 @@ from airflow.datasets import Dataset  # type: ignore
 from airflow.operators.python import PythonOperator  # type: ignore
 
 sys.path.insert(0, "/opt/airflow")
-from src.ingestion.audit import audited
-from src.ingestion.alert import dag_failure_callback, dag_success_callback
+from src.utils.audit import audited
+from src.utils.alert import dag_failure_callback, dag_success_callback
 
 SECRETS_PATH = Path("/opt/airflow/.dlt/secrets.toml")
 DBT_PROJECT_DIR = Path("/opt/airflow/dbt")
@@ -26,8 +26,9 @@ def _load_warehouse_credentials() -> str:
 
 def _setup_dbt_env():
     """Load warehouse credentials and set dbt env vars."""
-    from src.ingestion.stg_cli import set_dbt_env_vars
+    from src.cli.stg_cli import set_dbt_env_vars
     credentials = _load_warehouse_credentials()
+    print(f"DEBUG CREDENTIALS: {credentials}")
     set_dbt_env_vars(credentials)
 
 
@@ -54,7 +55,7 @@ def write_dag_run_note(**kwargs):
 @audited
 def run_dbt_stg(**kwargs):
     """Run dbt staging models."""
-    from src.ingestion.stg_cli import run_dbt
+    from src.cli.stg_cli import run_dbt
     _setup_dbt_env()
     run_dbt(DBT_PROJECT_DIR, selectors=["stg"])
     print("[stg2sil] dbt stg models complete")
@@ -63,7 +64,7 @@ def run_dbt_stg(**kwargs):
 @audited
 def run_dbt_snapshot(**kwargs):
     """Run dbt snapshots (SCD-2 dimensions)."""
-    from src.ingestion.stg_cli import run_dbt_snapshot
+    from src.cli.stg_cli import run_dbt_snapshot
     _setup_dbt_env()
     run_dbt_snapshot(DBT_PROJECT_DIR)
     print("[stg2sil] dbt snapshots complete")
@@ -72,7 +73,7 @@ def run_dbt_snapshot(**kwargs):
 @audited
 def run_dbt_silver(**kwargs):
     """Run dbt silver models (facts + dimensions)."""
-    from src.ingestion.stg_cli import run_dbt
+    from src.cli.stg_cli import run_dbt
     _setup_dbt_env()
     run_dbt(DBT_PROJECT_DIR, selectors=["silver"])
     print("[stg2sil] dbt silver models complete")
@@ -81,8 +82,8 @@ def run_dbt_silver(**kwargs):
 @audited
 def test_dbt(**kwargs):
     """Run dbt tests and store results to meta.dbt_test_results."""
-    from src.ingestion.stg_cli import run_dbt_test, parse_dbt_results
-    from src.ingestion.audit.db_logger import log_dbt_results
+    from src.cli.stg_cli import run_dbt_test, parse_dbt_results
+    from src.utils.audit.db_logger import log_dbt_results
 
     _setup_dbt_env()
     run_dbt_test(DBT_PROJECT_DIR)

@@ -80,7 +80,7 @@ from airflow.operators.python import PythonOperator
 from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 
 sys.path.insert(0, "/opt/airflow")
-from src.ingestion.audit import audited
+from src.ultis.audit import audited
 
 @audited
 def my_task(**kwargs):

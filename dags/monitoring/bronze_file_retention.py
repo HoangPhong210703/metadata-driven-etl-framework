@@ -10,7 +10,7 @@ from airflow import DAG  # type: ignore
 from airflow.operators.python import PythonOperator  # type: ignore
 
 sys.path.insert(0, "/opt/airflow")
-from src.ingestion.audit import audited
+from src.utils.audit import audited
 
 RETENTION_CONFIG_PATH = Path("/opt/airflow/config/retention_config.csv")
 
@@ -18,7 +18,7 @@ RETENTION_CONFIG_PATH = Path("/opt/airflow/config/retention_config.csv")
 @audited
 def run_retention(**kwargs):
     """Read retention_config.csv and delete expired parquet files per source."""
-    from src.ingestion.retention import cleanup_source
+    from src.utils.retention import cleanup_source
 
     if not RETENTION_CONFIG_PATH.exists():
         print("[retention] No retention_config.csv found, skipping")
